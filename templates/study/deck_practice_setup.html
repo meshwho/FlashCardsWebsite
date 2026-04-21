@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Repeat deck{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Repeat {{ deck.title }}</h1>
+    <p class="subtitle">Choose how you want to review this deck.</p>
+</div>
+
+{% if not has_cards %}
+    <div class="empty-state card">
+        <span class="empty-icon">◌</span>
+        <p>This deck has no cards yet.</p>
+        <a href="{% url 'deck_edit' deck.id %}" class="btn btn-primary">Edit deck</a>
+    </div>
+{% else %}
+    <div class="deck-grid">
+        <form method="post" class="deck-card">
+            {% csrf_token %}
+            <input type="hidden" name="mode" value="flip">
+            <div class="deck-title">Simple flip</div>
+            <p>Just flip cards and move forward. No FSRS changes.</p>
+            <div class="deck-footer">
+                <span class="badge badge-muted">{{ card_count }} cards</span>
+                <button type="submit" class="btn btn-primary btn-sm">Start</button>
+            </div>
+        </form>
+
+        <form method="post" class="deck-card">
+            {% csrf_token %}
+            <input type="hidden" name="mode" value="typing">
+            <div class="deck-title">Typing practice</div>
+            <p>Type the answer with hints. Direction changes during practice. No FSRS changes.</p>
+            <div class="deck-footer">
+                <span class="badge badge-accent">{{ card_count }} cards</span>
+                <button type="submit" class="btn btn-primary btn-sm">Start</button>
+            </div>
+        </form>
+    </div>
+{% endif %}
+{% endblock %}

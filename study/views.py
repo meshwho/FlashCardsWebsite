@@ -29,6 +29,28 @@ from .selectors import (
     get_user_review_slots,
     get_weekly_due_schedule_for_user,
 )
+from .review_logic import (
+    MAX_HINTS,
+    build_hint_mask,
+    get_rating_from_result,
+    is_correct_answer,
+)
+from collections import Counter
+
+from .practice_logic import MAX_HINTS, get_hint_text, get_prompt_and_expected, get_typing_result
+from .practice_session import (
+    add_practice_summary_item,
+    advance_practice_session,
+    clear_practice_session,
+    get_current_card_id,
+    get_current_direction,
+    get_practice_session,
+    get_practice_summary,
+    get_remaining_count,
+    start_deck_practice_session,
+)
+from .selectors import get_user_card_or_404, get_user_deck_cards
+from .practice_session import go_back_practice_session
 
 def signup_view(request):
     if request.user.is_authenticated:
@@ -218,20 +240,74 @@ def review_card_view(request):
     if card is None:
         return redirect("review_done")
 
-    if request.method == "POST":
-        rating_value = int(request.POST["rating"])
-        service = FSRSService()
-        outcome = service.review_card(card, rating_value)
-
-        add_review_to_session(request, outcome.card, rating_value)
-
-        next_card = get_next_due_card_for_user(request.user)
-        if next_card is None:
-            return redirect("review_done")
-
-        return redirect("review_card")
-
     remaining_count = get_due_cards_for_user(request.user).count()
+
+    hints_used = 0
+    user_answer = ""
+    hint_text = ""
+    feedback = ""
+    feedback_type = ""
+    answer_revealed = False
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        user_answer = request.POST.get("user_answer", "").strip()
+        hints_used = int(request.POST.get("hints_used", 0))
+
+        if action == "hint":
+            hints_used = min(hints_used + 1, MAX_HINTS)
+            hint_text = build_hint_mask(card.answer, hints_used)
+
+        elif action == "check":
+            if is_correct_answer(user_answer, card.answer):
+                rating_value = get_rating_from_result(hints_used, knows_answer=True)
+                service = FSRSService()
+                outcome = service.review_card(card, rating_value)
+
+                add_review_to_session(
+                    request,
+                    outcome.card,
+                    rating_value,
+                    user_answer=user_answer,
+                    hints_used=hints_used,
+                )
+
+                next_card = get_next_due_card_for_user(request.user)
+                if next_card is None:
+                    return redirect("review_done")
+                return redirect("review_card")
+            else:
+                feedback = "Not quite right. Try again or use a hint."
+                feedback_type = "error"
+                hint_text = build_hint_mask(card.answer, hints_used)
+
+        elif action == "dont_know":
+            rating_value = get_rating_from_result(hints_used, knows_answer=False)
+            service = FSRSService()
+            outcome = service.review_card(card, rating_value)
+
+            add_review_to_session(
+                request,
+                outcome.card,
+                rating_value,
+                user_answer=user_answer,
+                hints_used=hints_used,
+            )
+
+            answer_revealed = True
+            feedback = f"Correct answer: {card.answer}"
+            feedback_type = "info"
+
+            next_card = get_next_due_card_for_user(request.user)
+            if next_card is None:
+                return redirect("review_done")
+            return redirect("review_card")
+
+    else:
+        hint_text = build_hint_mask(card.answer, 0)
+
+    if hints_used > 0 and not hint_text:
+        hint_text = build_hint_mask(card.answer, hints_used)
 
     return render(
         request,
@@ -239,6 +315,13 @@ def review_card_view(request):
         {
             "card": card,
             "remaining_count": remaining_count,
+            "hints_used": hints_used,
+            "max_hints": MAX_HINTS,
+            "hint_text": hint_text,
+            "user_answer": user_answer,
+            "feedback": feedback,
+            "feedback_type": feedback_type,
+            "answer_revealed": answer_revealed,
         },
     )
 
@@ -252,6 +335,216 @@ def review_done_view(request):
         request,
         "study/review_done.html",
         {
+            "summary": summary,
+        },
+    )
+
+@login_required
+def deck_practice_setup_view(request, deck_id):
+    deck = get_user_deck_or_404(request.user, deck_id)
+    cards = list(get_user_deck_cards(request.user, deck_id))
+
+    if not cards:
+        return render(
+            request,
+            "study/deck_practice_setup.html",
+            {
+                "deck": deck,
+                "has_cards": False,
+            },
+        )
+
+    if request.method == "POST":
+        mode = request.POST.get("mode")
+
+        if mode not in {"flip", "typing"}:
+            mode = "flip"
+
+        start_deck_practice_session(
+            request,
+            deck,
+            mode,
+            [card.id for card in cards],
+        )
+
+        if mode == "flip":
+            return redirect("deck_practice_flip", deck_id=deck.id)
+        return redirect("deck_practice_typing", deck_id=deck.id)
+
+    return render(
+        request,
+        "study/deck_practice_setup.html",
+        {
+            "deck": deck,
+            "has_cards": True,
+            "card_count": len(cards),
+        },
+    )
+
+
+@login_required
+def deck_practice_flip_view(request, deck_id):
+    deck = get_user_deck_or_404(request.user, deck_id)
+    session = get_practice_session(request)
+
+    if not session or session.get("deck_id") != str(deck.id) or session.get("mode") != "flip":
+        return redirect("deck_practice_setup", deck_id=deck.id)
+
+    card_id = get_current_card_id(request)
+    if card_id is None:
+        return redirect("deck_practice_done", deck_id=deck.id)
+
+    card = get_user_card_or_404(request.user, card_id)
+    remaining_count = get_remaining_count(request)
+    current_index = session.get("current_index", 0)
+    can_go_back = current_index > 0
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if action == "back":
+            go_back_practice_session(request)
+            return redirect("deck_practice_flip", deck_id=deck.id)
+
+        if action == "next":
+            add_practice_summary_item(
+                request,
+                {
+                    "question": card.question,
+                    "answer": card.answer,
+                    "mode": "flip",
+                },
+            )
+            advance_practice_session(request)
+
+            if get_current_card_id(request) is None:
+                return redirect("deck_practice_done", deck_id=deck.id)
+
+            return redirect("deck_practice_flip", deck_id=deck.id)
+
+    return render(
+        request,
+        "study/deck_practice_flip.html",
+        {
+            "deck": deck,
+            "card": card,
+            "remaining_count": remaining_count,
+            "can_go_back": can_go_back,
+        },
+    )
+
+
+@login_required
+def deck_practice_typing_view(request, deck_id):
+    deck = get_user_deck_or_404(request.user, deck_id)
+    session = get_practice_session(request)
+
+    if not session or session.get("deck_id") != str(deck.id) or session.get("mode") != "typing":
+        return redirect("deck_practice_setup", deck_id=deck.id)
+
+    card_id = get_current_card_id(request)
+    if card_id is None:
+        return redirect("deck_practice_done", deck_id=deck.id)
+
+    card = get_user_card_or_404(request.user, card_id)
+    direction = get_current_direction(request)
+    qa = get_prompt_and_expected(card, direction)
+
+    remaining_count = get_remaining_count(request)
+
+    hints_used = 0
+    user_answer = ""
+    hint_text = ""
+    feedback = ""
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        user_answer = request.POST.get("user_answer", "").strip()
+        hints_used = int(request.POST.get("hints_used", 0))
+
+        if action == "hint":
+            hints_used = min(hints_used + 1, MAX_HINTS)
+            hint_text = get_hint_text(qa["expected"], hints_used)
+
+        elif action == "check":
+            result = get_typing_result(qa["expected"], user_answer, hints_used, dont_know=False)
+
+            if result["is_correct"]:
+                add_practice_summary_item(
+                    request,
+                    {
+                        "question": qa["prompt"],
+                        "answer": qa["expected"],
+                        "user_answer": user_answer,
+                        "hints_used": hints_used,
+                        "rating_label": result["rating_label"],
+                        "direction_label": qa["direction_label"],
+                        "mode": "typing",
+                    },
+                )
+
+                advance_practice_session(request)
+
+                if get_current_card_id(request) is None:
+                    return redirect("deck_practice_done", deck_id=deck.id)
+
+                return redirect("deck_practice_typing", deck_id=deck.id)
+
+            feedback = "Not quite right. Try again or use a hint."
+            hint_text = get_hint_text(qa["expected"], hints_used)
+
+        elif action == "dont_know":
+            result = get_typing_result(qa["expected"], user_answer, hints_used, dont_know=True)
+
+            add_practice_summary_item(
+                request,
+                {
+                    "question": qa["prompt"],
+                    "answer": qa["expected"],
+                    "user_answer": user_answer,
+                    "hints_used": hints_used,
+                    "rating_label": result["rating_label"],
+                    "direction_label": qa["direction_label"],
+                    "mode": "typing",
+                },
+            )
+
+            advance_practice_session(request)
+
+            if get_current_card_id(request) is None:
+                return redirect("deck_practice_done", deck_id=deck.id)
+
+            return redirect("deck_practice_typing", deck_id=deck.id)
+
+    return render(
+        request,
+        "study/deck_practice_typing.html",
+        {
+            "deck": deck,
+            "card": card,
+            "prompt_text": qa["prompt"],
+            "direction_label": qa["direction_label"],
+            "remaining_count": remaining_count,
+            "hints_used": hints_used,
+            "max_hints": MAX_HINTS,
+            "hint_text": hint_text,
+            "user_answer": user_answer,
+            "feedback": feedback,
+        },
+    )
+
+
+@login_required
+def deck_practice_done_view(request, deck_id):
+    deck = get_user_deck_or_404(request.user, deck_id)
+    summary = get_practice_summary(request)
+    clear_practice_session(request)
+
+    return render(
+        request,
+        "study/deck_practice_done.html",
+        {
+            "deck": deck,
             "summary": summary,
         },
     )

@@ -34,37 +34,30 @@
     </div>
 
     {% if summary.reviews %}
-    <div class="card fade-in-3" style="padding:0;overflow:hidden;">
-        <div style="padding:16px 20px;border-bottom:1px solid var(--border);">
-            <h3>Session details</h3>
-        </div>
-        <table class="data-table">
-            <thead>
+    <h2>Reviewed cards</h2>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Question</th>
+                <th>Your answer</th>
+                <th>Hints</th>
+                <th>Result</th>
+                <th>Next review</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in summary.reviews %}
                 <tr>
-                    <th>Question</th>
-                    <th>Result</th>
-                    <th>Next review</th>
+                    <td>{{ item.question|truncatechars:100 }}</td>
+                    <td>{{ item.user_answer|default:"—" }}</td>
+                    <td>{{ item.hints_used }}</td>
+                    <td>{{ item.rating_label }}</td>
+                    <td>{{ item.due_after }}</td>
                 </tr>
-            </thead>
-            <tbody>
-                {% for item in summary.reviews %}
-                <tr>
-                    <td>{{ item.question|truncatechars:90 }}</td>
-                    <td>
-                        <span class="badge
-                            {% if item.rating_label == 'Again' %}s-again
-                            {% elif item.rating_label == 'Hard' %}s-hard
-                            {% elif item.rating_label == 'Good' %}s-good
-                            {% else %}s-easy{% endif %}">
-                            {{ item.rating_label }}
-                        </span>
-                    </td>
-                    <td style="font-size:.8rem;">{{ item.due_after }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
 </div>
 {% endblock %}

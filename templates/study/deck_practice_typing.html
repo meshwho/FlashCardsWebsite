@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Typing practice{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Typing practice</h1>
+    <p class="subtitle">{{ deck.title }} · {{ direction_label }} · {{ remaining_count }} cards left</p>
+</div>
+
+<div class="review-meta">
+    <span class="badge badge-muted">{{ deck.title }}</span>
+    <span class="badge badge-accent">{{ direction_label }}</span>
+</div>
+
+<div class="card">
+    <div class="face-label">Prompt</div>
+    <div class="card-text">{{ prompt_text }}</div>
+</div>
+
+{% if feedback %}
+    <div class="form-error-banner" style="margin-top: 16px;">
+        <p>{{ feedback }}</p>
+    </div>
+{% endif %}
+
+<div class="card" style="margin-top: 20px;">
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="hints_used" value="{{ hints_used }}">
+
+        <div class="form-group">
+            <label for="id_user_answer">Your answer</label>
+            <input type="text" name="user_answer" id="id_user_answer" value="{{ user_answer }}" autocomplete="off" autofocus>
+        </div>
+
+        <div class="form-group">
+            <label>Hints used</label>
+            <p>{{ hints_used }} / {{ max_hints }}</p>
+        </div>
+
+        <div class="form-group">
+            <label>Hint</label>
+            <div class="card" style="padding: 14px 16px; background: var(--surface-2);">
+                <p class="hint-text" style="margin: 0; font-size: 1rem;">{{ hint_text|default:"No hint yet" }}</p>
+            </div>
+        </div>
+
+        <div class="review-actions-row">
+            <button type="submit" name="action" value="check" class="btn btn-primary">Check</button>
+            <button type="submit" name="action" value="hint" class="btn btn-secondary" {% if hints_used >= max_hints %}disabled{% endif %}>Hint</button>
+            <button type="submit" name="action" value="dont_know" class="btn btn-danger">Don't know</button>
+        </div>
+    </form>
+</div>
+
+<div class="card" style="margin-top: 20px;">
+    <div class="face-label">Scoring</div>
+    <ul class="review-rules-list">
+        <li>0 hints → Easy</li>
+        <li>1 hint → Good</li>
+        <li>2–3 hints → Hard</li>
+        <li>Don't know → Again</li>
+    </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Practice complete{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Practice complete</h1>
+    <p class="subtitle">{{ deck.title }}</p>
+</div>
+
+{% if summary.mode == "typing" %}
+    <div class="summary-grid">
+        <div class="summary-stat s-again">
+            <div class="s-value">{{ summary.again_count }}</div>
+            <div class="s-label">Again</div>
+        </div>
+        <div class="summary-stat s-hard">
+            <div class="s-value">{{ summary.hard_count }}</div>
+            <div class="s-label">Hard</div>
+        </div>
+        <div class="summary-stat s-good">
+            <div class="s-value">{{ summary.good_count }}</div>
+            <div class="s-label">Good</div>
+        </div>
+        <div class="summary-stat s-easy">
+            <div class="s-value">{{ summary.easy_count }}</div>
+            <div class="s-label">Easy</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Prompt</th>
+                    <th>Your answer</th>
+                    <th>Hints</th>
+                    <th>Result</th>
+                    <th>Direction</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in summary.items %}
+                    <tr>
+                        <td>{{ item.question|truncatechars:80 }}</td>
+                        <td>{{ item.user_answer|default:"—" }}</td>
+                        <td>{{ item.hints_used }}</td>
+                        <td>{{ item.rating_label }}</td>
+                        <td>{{ item.direction_label }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="card">
+        <p>You reviewed <strong>{{ summary.total }}</strong> cards in simple flip mode.</p>
+    </div>
+{% endif %}
+
+<div style="margin-top: 24px;">
+    <a href="{% url 'deck_detail' deck.id %}" class="btn btn-primary">Back to deck</a>
+</div>
+{% endblock %}

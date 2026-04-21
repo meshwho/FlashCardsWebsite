@@ -11,6 +11,10 @@ from .views import (
     signup_view,
     start_review_session_view,
     study_today_view,
+    deck_practice_setup_view,
+    deck_practice_flip_view,
+    deck_practice_typing_view,
+    deck_practice_done_view,
 )
 
 urlpatterns = [
@@ -24,4 +28,8 @@ urlpatterns = [
     path("study/start/", start_review_session_view, name="study_start"),
     path("study/review/", review_card_view, name="review_card"),
     path("study/done/", review_done_view, name="review_done"),
+    path("decks/<uuid:deck_id>/practice/", deck_practice_setup_view, name="deck_practice_setup"),
+    path("decks/<uuid:deck_id>/practice/flip/", deck_practice_flip_view, name="deck_practice_flip"),
+    path("decks/<uuid:deck_id>/practice/typing/", deck_practice_typing_view, name="deck_practice_typing"),
+    path("decks/<uuid:deck_id>/practice/done/", deck_practice_done_view, name="deck_practice_done"),
 ]

@@ -9,7 +9,9 @@
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
         <a href="{% url 'deck_edit' deck.id %}" class="btn btn-secondary btn-sm">Edit deck</a>
+        <a href="{% url 'deck_practice_setup' deck.id %}" class="btn btn-secondary btn-sm">Practice</a>
         <a href="{% url 'study_start' %}" class="btn btn-primary btn-sm">Study now →</a>
+
     </div>
 </div>
 

@@ -19,13 +19,15 @@ def start_review_session(request):
     request.session.modified = True
 
 
-def add_review_to_session(request, card, rating_value):
+def add_review_to_session(request, card, rating_value, user_answer="", hints_used=0):
     summary = request.session.get(SESSION_KEY, {"reviews": []})
 
     summary["reviews"].append(
         {
             "card_id": str(card.id),
             "question": card.question,
+            "user_answer": user_answer,
+            "hints_used": hints_used,
             "rating_value": rating_value,
             "rating_label": RATING_LABELS.get(rating_value, str(rating_value)),
             "due_after": card.due.isoformat() if card.due else None,
@@ -34,7 +36,6 @@ def add_review_to_session(request, card, rating_value):
 
     request.session[SESSION_KEY] = summary
     request.session.modified = True
-
 
 def get_review_session_summary(request):
     summary = request.session.get(SESSION_KEY, {"reviews": []})

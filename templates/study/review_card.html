@@ -1,81 +1,89 @@
 {% extends "base.html" %}
-{% block title %}Review — FlashCards{% endblock %}
+
+{% block title %}Review{% endblock %}
 
 {% block content %}
-<div style="max-width:680px;margin:0 auto;" class="fade-in">
+<div class="page-header fade-in">
+    <h1>Review</h1>
+    <p class="subtitle">Translate the word and use hints only if needed.</p>
+</div>
 
-    <div class="review-meta">
-        <p style="font-size:.8rem;color:var(--text-3);">{{ card.deck.title }}</p>
-        <div style="display:flex;align-items:center;gap:12px;">
-            <span style="font-size:.8rem;color:var(--text-3);">{{ remaining_count }} remaining</span>
-            <div class="progress-bar-wrap">
-                <div class="progress-bar-fill" style="width:40%;"></div>
-            </div>
-        </div>
+<div class="review-meta fade-in">
+    <span class="badge badge-muted">{{ card.deck.title }}</span>
+    <span class="badge badge-accent">{{ remaining_count }} due</span>
+</div>
+
+<div class="flashcard-wrap fade-in-2">
+    <div class="card">
+        <div class="face-label">Question</div>
+        <div class="card-text">{{ card.question }}</div>
     </div>
+</div>
 
-    <div class="flashcard-wrap">
-        <div class="flashcard" id="flashcard">
-            <div class="flashcard-face front">
-                <div class="face-label">Question</div>
-                <div class="card-text">{{ card.question|linebreaksbr }}</div>
-            </div>
-            <div class="flashcard-face back">
-                <div class="face-label answer-label">Answer</div>
-                <div class="card-text">{{ card.answer|linebreaksbr }}</div>
-            </div>
-        </div>
+{% if feedback %}
+    <div class="form-error-banner fade-in-2">
+        <p>{{ feedback }}</p>
     </div>
+{% endif %}
 
-    <div id="show-answer-container" class="show-btn-wrap">
-        <button type="button" id="show-answer-btn" class="btn btn-primary" style="padding:12px 32px;">
-            Reveal answer
-        </button>
-        <p class="hint-text">or press <kbd class="kbd">Space</kbd></p>
-    </div>
-
-    <form method="post" id="rating-form" style="display:none;">
+<div class="card fade-in-2">
+    <form method="post" id="typing-review-form">
         {% csrf_token %}
-        <div class="rating-grid">
-            <button type="submit" name="rating" value="1" class="rating-btn rating-again">
-                Again <span class="hint">Forgot</span>
+        <input type="hidden" name="hints_used" value="{{ hints_used }}">
+
+        <div class="form-group">
+            <label for="id_user_answer">Your translation</label>
+            <input
+                type="text"
+                id="id_user_answer"
+                name="user_answer"
+                value="{{ user_answer }}"
+                autocomplete="off"
+                autofocus
+            >
+        </div>
+
+        <div class="form-group">
+            <label>Hints used</label>
+            <p>{{ hints_used }} / {{ max_hints }}</p>
+        </div>
+
+        <div class="form-group">
+            <label>Hint</label>
+            <div class="card" style="padding: 14px 16px; background: var(--surface-2);">
+                <p class="hint-text" style="margin: 0; font-size: 1rem;">{{ hint_text|default:"No hint yet" }}</p>
+            </div>
+        </div>
+
+        <div class="review-actions-row">
+            <button type="submit" class="btn btn-primary" name="action" value="check">
+                Check
             </button>
-            <button type="submit" name="rating" value="2" class="rating-btn rating-hard">
-                Hard <span class="hint">Struggled</span>
+
+            <button
+                type="submit"
+                class="btn btn-secondary"
+                name="action"
+                value="hint"
+                {% if hints_used >= max_hints %}disabled{% endif %}
+            >
+                Hint
             </button>
-            <button type="submit" name="rating" value="3" class="rating-btn rating-good">
-                Good <span class="hint">Recalled</span>
-            </button>
-            <button type="submit" name="rating" value="4" class="rating-btn rating-easy">
-                Easy <span class="hint">Perfect</span>
+
+            <button type="submit" class="btn btn-danger" name="action" value="dont_know">
+                Don't know
             </button>
         </div>
     </form>
 </div>
 
-<script>
-(function () {
-    const card = document.getElementById("flashcard");
-    const showBtn = document.getElementById("show-answer-btn");
-    const showWrap = document.getElementById("show-answer-container");
-    const ratingForm = document.getElementById("rating-form");
-
-    function reveal() {
-        card.classList.add("flipped");
-        showWrap.style.display = "none";
-        setTimeout(() => {
-            ratingForm.style.display = "block";
-            ratingForm.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        }, 280);
-    }
-
-    showBtn.addEventListener("click", reveal);
-    document.addEventListener("keydown", function (e) {
-        if ((e.code === "Space" || e.key === " ") && showWrap.style.display !== "none") {
-            e.preventDefault();
-            reveal();
-        }
-    });
-})();
-</script>
+<div class="card fade-in-3">
+    <div class="face-label">How scoring works</div>
+    <ul class="review-rules-list">
+        <li>0 hints → Easy</li>
+        <li>1 hint → Good</li>
+        <li>2–3 hints → Hard</li>
+        <li>Don't know → Again</li>
+    </ul>
+</div>
 {% endblock %}

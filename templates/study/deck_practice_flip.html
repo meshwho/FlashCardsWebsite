@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Simple flip{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <h1>Simple flip</h1>
+    <p class="subtitle">{{ deck.title }} · {{ remaining_count }} cards left</p>
+</div>
+
+<div class="flashcard-wrap fade-in-2">
+    <div class="flashcard" id="flip-card">
+        <div class="flashcard-face front">
+            <div class="face-label">Question</div>
+            <div class="card-text">{{ card.question }}</div>
+        </div>
+        <div class="flashcard-face back">
+            <div class="face-label answer-label">Answer</div>
+            <div class="card-text">{{ card.answer }}</div>
+        </div>
+    </div>
+</div>
+
+<form method="post" class="flip-actions-bar fade-in-3">
+    {% csrf_token %}
+
+    <div class="flip-actions-bar__left">
+        {% if can_go_back %}
+            <button type="submit" name="action" value="back" class="btn btn-secondary">
+                Back
+            </button>
+        {% else %}
+            <button type="button" class="btn btn-secondary" disabled>
+                Back
+            </button>
+        {% endif %}
+    </div>
+
+    <div class="flip-actions-bar__center">
+        <button type="button" class="btn btn-primary" id="flip-btn">
+            Flip card
+        </button>
+    </div>
+
+    <div class="flip-actions-bar__right">
+        <button type="submit" name="action" value="next" class="btn btn-secondary">
+            Next
+        </button>
+    </div>
+</form>
+
+<script>
+    (function () {
+        const card = document.getElementById("flip-card");
+        const btn = document.getElementById("flip-btn");
+
+        function toggleCard() {
+            card.classList.toggle("flipped");
+        }
+
+        btn.addEventListener("click", toggleCard);
+        card.addEventListener("click", toggleCard);
+    })();
+</script>
+{% endblock %}

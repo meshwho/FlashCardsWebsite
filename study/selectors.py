@@ -126,3 +126,7 @@ def ensure_default_review_slots(user):
             )
 
     return schedule
+
+def get_user_deck_cards(user, deck_id):
+    deck = get_user_deck_or_404(user, deck_id)
+    return deck.cards.all().order_by("created_at")
