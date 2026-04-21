@@ -70,6 +70,8 @@ class CardForm(forms.ModelForm):
             ),
         }
 
+
+
     def clean(self):
         cleaned_data = super().clean()
 
@@ -98,7 +100,7 @@ CardInlineFormSet = inlineformset_factory(
     model=Card,
     form=CardForm,
     formset=BaseCardInlineFormSet,
-    fields=["question", "answer"],
+    fields=["question", "answer", "has_article"],
     extra=1,
     can_delete=True,
 )

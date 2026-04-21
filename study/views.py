@@ -449,6 +449,7 @@ def deck_practice_typing_view(request, deck_id):
     card = get_user_card_or_404(request.user, card_id)
     direction = get_current_direction(request)
     qa = get_prompt_and_expected(card, direction)
+    use_article_logic = card.has_article and qa["expected_side"] == "question"
 
     remaining_count = get_remaining_count(request)
 
@@ -464,10 +465,19 @@ def deck_practice_typing_view(request, deck_id):
 
         if action == "hint":
             hints_used = min(hints_used + 1, MAX_HINTS)
-            hint_text = get_hint_text(qa["expected"], hints_used)
+            hint_text = get_hint_text(
+                qa["expected"],
+                hints_used,
+                has_article=use_article_logic,
+            )
 
         elif action == "check":
-            result = get_typing_result(qa["expected"], user_answer, hints_used, dont_know=False)
+            result = get_typing_result(
+                qa["expected"],
+                user_answer,
+                hints_used,
+                dont_know=False,
+            )
 
             if result["is_correct"]:
                 add_practice_summary_item(
@@ -502,8 +512,7 @@ def deck_practice_typing_view(request, deck_id):
                 qa["expected"],
                 user_answer,
                 hints_used,
-                has_article=card.has_article if direction == "forward" else False,
-                dont_know=False,
+                dont_know=True,
             )
 
             add_practice_summary_item(
@@ -525,6 +534,13 @@ def deck_practice_typing_view(request, deck_id):
                 return redirect("deck_practice_done", deck_id=deck.id)
 
             return redirect("deck_practice_typing", deck_id=deck.id)
+
+    if hints_used > 0 and not hint_text:
+        hint_text = get_hint_text(
+            qa["expected"],
+            hints_used,
+            has_article=use_article_logic,
+        )
 
     return render(
         request,

@@ -12,16 +12,18 @@ def get_prompt_and_expected(card, direction):
             "prompt": card.answer,
             "expected": card.question,
             "direction_label": "Native → Foreign",
+            "expected_side": "question",
         }
 
     return {
         "prompt": card.question,
         "expected": card.answer,
         "direction_label": "Foreign → Native",
+        "expected_side": "answer",
     }
 
 
-def get_typing_result(expected_text, user_answer, hints_used, has_article=False, dont_know=False):
+def get_typing_result(expected_text, user_answer, hints_used, dont_know=False):
     if dont_know:
         return {
             "is_correct": False,
@@ -29,7 +31,7 @@ def get_typing_result(expected_text, user_answer, hints_used, has_article=False,
             "rating_label": "Again",
         }
 
-    correct = is_correct_answer(user_answer, expected_text, has_article=has_article)
+    correct = is_correct_answer(user_answer, expected_text)
 
     if not correct:
         return {
@@ -56,7 +58,6 @@ def get_typing_result(expected_text, user_answer, hints_used, has_article=False,
 
 def get_hint_text(expected_text, hints_used, has_article=False):
     return build_hint_mask(expected_text, hints_used, has_article=has_article)
-
 
 __all__ = [
     "MAX_HINTS",

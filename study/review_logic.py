@@ -24,22 +24,14 @@ def strip_article(text: str) -> str:
     return text
 
 
-def get_accepted_answers(answer_text: str, has_article: bool = False) -> list[str]:
+def get_accepted_answers(answer_text: str) -> list[str]:
     parts = [normalize_answer(part) for part in (answer_text or "").split(",")]
-    parts = [part for part in parts if part]
-
-    accepted = set(parts)
-
-    if has_article:
-        for part in parts:
-            accepted.add(strip_article(part))
-
-    return list(accepted)
+    return [part for part in parts if part]
 
 
-def is_correct_answer(user_input: str, answer_text: str, has_article: bool = False) -> bool:
+def is_correct_answer(user_input: str, answer_text: str) -> bool:
     normalized_input = normalize_answer(user_input)
-    accepted_answers = get_accepted_answers(answer_text, has_article=has_article)
+    accepted_answers = get_accepted_answers(answer_text)
     return normalized_input in accepted_answers
 
 
@@ -61,7 +53,7 @@ def get_primary_answer(answer_text: str, has_article: bool = False) -> str:
 def build_hint_mask(answer_text: str, hints_used: int, has_article: bool = False) -> str:
     """
     Reveal progressively more letters from the first accepted answer.
-    If has_article=True, the first word is skipped for hint generation.
+    If has_article=True, the first word is skipped ONLY for hint generation.
     """
     primary = get_primary_answer(answer_text, has_article=has_article)
     if not primary:
