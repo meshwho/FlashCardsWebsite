@@ -9,64 +9,81 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body>
+    <header class="site-header">
+        <div class="nav-inner">
+            <a href="{% url 'dashboard' %}" class="nav-logo">Flash<span>Cards</span></a>
 
-<header class="site-header">
-    <div class="nav-inner">
-        <a href="{% if user.is_authenticated %}{% url 'dashboard' %}{% else %}{% url 'login' %}{% endif %}" class="nav-logo">Flash<span>Cards</span></a>
+            {% if user.is_authenticated %}
+                <nav class="nav-links" id="mobileMenu">
+                    <a href="{% url 'dashboard' %}">Dashboard</a>
+                    <a href="{% url 'deck_list' %}">Decks</a>
+                    <a href="{% url 'deck_create' %}">New deck</a>
+                    <a href="{% url 'study_today' %}">Study</a>
+                    <a href="#" class="nav-profile-link">Profile</a>
 
-        {% if user.is_authenticated %}
-        <button type="button" class="nav-menu-toggle" id="nav-menu-toggle" aria-expanded="false" aria-controls="main-nav-links">
-            Menu
-        </button>
-        <nav class="nav-links">
-            <a href="{% url 'dashboard' %}">Dashboard</a>
-            <a href="{% url 'deck_list' %}">Decks</a>
-            <a href="{% url 'deck_create' %}">New deck</a>
-            <a href="{% url 'study_today' %}">Study</a>
-        </nav>
-        <div class="nav-right">
-            <span class="nav-user">{{ user.username }}</span>
-            <form method="post" action="{% url 'logout' %}" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit" class="btn-logout">Log out</button>
-            </form>
+                    <div class="mobile-menu-footer">
+                        <form method="post" action="{% url 'logout' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-logout mobile-logout-btn">Log out</button>
+                        </form>
+                    </div>
+                </nav>
+
+                <div class="nav-right">
+                    <button type="button" class="nav-menu-toggle" id="menuToggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu">
+                        <svg viewBox="0 0 24 24" class="nav-menu-icon" aria-hidden="true">
+                            <path d="M4 7H20" />
+                            <path d="M4 12H20" />
+                            <path d="M4 17H20" />
+                        </svg>
+                    </button>
+
+                    <span class="nav-user">{{ user.username }}</span>
+
+                    <a href="#" class="btn btn-secondary btn-sm nav-profile-desktop">Profile</a>
+
+                    <form method="post" action="{% url 'logout' %}" class="nav-logout-desktop">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-logout">Log out</button>
+                    </form>
+                </div>
+            {% else %}
+                <div class="nav-right">
+                    <a href="{% url 'login' %}" class="btn btn-secondary btn-sm">Log in</a>
+                    <a href="{% url 'signup' %}" class="btn btn-primary btn-sm">Sign up</a>
+                </div>
+            {% endif %}
         </div>
-        {% else %}
-        <div class="nav-right" style="margin-left:auto;">
-            <a href="{% url 'login' %}" class="btn btn-ghost">Log in</a>
-            <a href="{% url 'signup' %}" class="btn btn-primary">Sign up</a>
-        </div>
-        {% endif %}
-    </div>
+    </header>
+
+    <main class="page-wrapper">
+        {% block content %}{% endblock %}
+    </main>
+
     {% if user.is_authenticated %}
-    <nav class="mobile-nav-links" id="main-nav-links">
-        <a href="{% url 'dashboard' %}">Dashboard</a>
-        <a href="{% url 'deck_list' %}">Decks</a>
-        <a href="{% url 'deck_create' %}">New deck</a>
-        <a href="{% url 'study_today' %}">Study</a>
-    </nav>
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById("menuToggle");
+            const menu = document.getElementById("mobileMenu");
+
+            if (!toggleBtn || !menu) return;
+
+            toggleBtn.addEventListener("click", function () {
+                const isOpen = menu.classList.toggle("mobile-open");
+                toggleBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+            });
+
+            document.addEventListener("click", function (event) {
+                const clickedInsideMenu = menu.contains(event.target);
+                const clickedToggle = toggleBtn.contains(event.target);
+
+                if (!clickedInsideMenu && !clickedToggle) {
+                    menu.classList.remove("mobile-open");
+                    toggleBtn.setAttribute("aria-expanded", "false");
+                }
+            });
+        })();
+    </script>
     {% endif %}
-</header>
-
-<main class="page-wrapper">
-    {% block content %}{% endblock %}
-</main>
-
-{% if user.is_authenticated %}
-<script>
-    (function () {
-        const menuBtn = document.getElementById("nav-menu-toggle");
-        const mobileNav = document.getElementById("main-nav-links");
-
-        if (!menuBtn || !mobileNav) return;
-
-        menuBtn.addEventListener("click", function () {
-            const isOpen = mobileNav.classList.toggle("is-open");
-            menuBtn.setAttribute("aria-expanded", String(isOpen));
-        });
-    })();
-</script>
-{% endif %}
-
 </body>
 </html>

@@ -4,7 +4,7 @@
 {% block content %}
 <div class="fade-in">
     <div class="page-header">
-        <h1>Good day, {{ request.user.username }}</h1>
+        <h1>Hello, {{ request.user.username }}</h1>
         <p class="subtitle">Here's your study overview</p>
     </div>
 
@@ -100,12 +100,16 @@
                             <label>Slot {{ forloop.counter }}</label>
                         </div>
                         <div>
-                            <input
-                                type="time"
-                                name="slot_{{ forloop.counter0 }}_time"
-                                value="{{ form.initial.time|time:'H:i' }}"
-                                required
-                            >
+                            <div class="time-input-wrap">
+                                <span class="time-input-icon" aria-hidden="true">🕒</span>
+                                <input
+                                    type="time"
+                                    name="slot_{{ forloop.counter0 }}_time"
+                                    value="{{ form.initial.time|time:'H:i' }}"
+                                    class="time-input"
+                                    required
+                                >
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -155,12 +159,16 @@
                             <label>Slot ${i + 1}</label>
                         </div>
                         <div>
-                            <input
-                                type="time"
-                                name="slot_${i}_time"
-                                value="${value}"
-                                required
-                            >
+                            <div class="time-input-wrap">
+                                <span class="time-input-icon" aria-hidden="true">🕒</span>
+                                <input
+                                    type="time"
+                                    name="slot_${i}_time"
+                                    value="${value}"
+                                    class="time-input"
+                                    required
+                                >
+                            </div>
                         </div>
                     </div>
                 `;

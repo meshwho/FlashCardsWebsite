@@ -21,6 +21,10 @@
     </div>
 </div>
 
+<p class="hint-text" style="text-align:center; margin-bottom: 18px;">
+    Tap the card to flip
+</p>
+
 <form method="post" class="flip-actions-bar fade-in-3">
     {% csrf_token %}
 
@@ -36,14 +40,8 @@
         {% endif %}
     </div>
 
-    <div class="flip-actions-bar__center">
-        <button type="button" class="btn btn-primary" id="flip-btn">
-            Flip card
-        </button>
-    </div>
-
     <div class="flip-actions-bar__right">
-        <button type="submit" name="action" value="next" class="btn btn-secondary">
+        <button type="submit" name="action" value="next" class="btn btn-primary">
             Next
         </button>
     </div>
@@ -52,13 +50,11 @@
 <script>
     (function () {
         const card = document.getElementById("flip-card");
-        const btn = document.getElementById("flip-btn");
 
         function toggleCard() {
             card.classList.toggle("flipped");
         }
 
-        btn.addEventListener("click", toggleCard);
         card.addEventListener("click", toggleCard);
     })();
 </script>
