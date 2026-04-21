@@ -885,7 +885,32 @@ textarea { resize: vertical; min-height: 90px; }
     }
 }
 
-/* ── Mobile header improvements ── */
+/* ── Header refinement ── */
+
+.nav-shell {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.nav-topbar {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.nav-links-desktop {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding-bottom: 10px;
+}
+
+.mobile-menu {
+    display: none;
+}
 
 .nav-menu-toggle {
     display: none;
@@ -894,15 +919,21 @@ textarea { resize: vertical; min-height: 90px; }
     width: 42px;
     height: 42px;
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: 12px;
     background: var(--surface);
     color: var(--text);
     cursor: pointer;
     transition: background .15s, border-color .15s, transform .15s;
+    box-shadow: var(--shadow);
 }
 
 .nav-menu-toggle:hover {
     background: var(--surface-2);
+}
+
+.nav-menu-toggle.is-open {
+    background: var(--surface-2);
+    border-color: var(--border-2);
 }
 
 .nav-menu-icon {
@@ -914,14 +945,6 @@ textarea { resize: vertical; min-height: 90px; }
     stroke-linecap: round;
 }
 
-.mobile-menu-footer {
-    display: none;
-}
-
-.nav-logout-desktop {
-    display: block;
-}
-
 .nav-profile-desktop {
     display: inline-flex;
 }
@@ -930,29 +953,23 @@ textarea { resize: vertical; min-height: 90px; }
     display: none;
 }
 
+.mobile-menu-footer {
+    display: none;
+}
+
 @media (max-width: 640px) {
-    .site-header {
-        position: sticky;
-        top: 0;
+    .nav-shell {
+        padding: 0 14px;
     }
 
-    .nav-inner {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        align-items: center;
-        gap: 10px;
-        padding: 12px 14px;
-        min-height: auto;
-    }
-
-    .nav-logo {
-        margin-right: 0;
-        font-size: 1.15rem;
+    .nav-topbar {
+        height: 64px;
     }
 
     .nav-user,
     .nav-profile-desktop,
-    .nav-logout-desktop {
+    .nav-logout-desktop,
+    .nav-links-desktop {
         display: none;
     }
 
@@ -964,31 +981,29 @@ textarea { resize: vertical; min-height: 90px; }
 
     .nav-menu-toggle {
         display: inline-flex;
-        justify-self: end;
     }
 
-    .nav-links {
+    .mobile-menu {
         display: none;
-        grid-column: 1 / -1;
-        width: 100%;
-        flex-direction: column;
-        gap: 0;
-        padding-top: 10px;
+        margin-top: 4px;
+        padding: 10px 0 12px;
         border-top: 1px solid var(--border);
+        animation: fadeIn .18s ease both;
     }
 
-    .nav-links.mobile-open {
-        display: flex;
+    .mobile-menu.mobile-open {
+        display: block;
     }
 
-    .nav-links a {
-        width: 100%;
-        padding: 12px 6px;
-        border-radius: 0;
-        background: transparent;
+    .mobile-menu a {
+        display: block;
+        padding: 14px 6px;
+        color: var(--text);
+        text-decoration: none;
+        font-size: 1rem;
     }
 
-    .nav-links a + a {
+    .mobile-menu a + a {
         border-top: 1px solid var(--border);
     }
 
@@ -998,9 +1013,9 @@ textarea { resize: vertical; min-height: 90px; }
 
     .mobile-menu-footer {
         display: block;
-        padding-top: 12px;
+        padding-top: 14px;
+        margin-top: 8px;
         border-top: 1px solid var(--border);
-        margin-top: 6px;
     }
 
     .mobile-logout-btn {
