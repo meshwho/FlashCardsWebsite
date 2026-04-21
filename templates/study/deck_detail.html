@@ -7,7 +7,7 @@
         <h1>{{ deck.title }}</h1>
         <p class="subtitle">{{ deck.cards.count }} card{{ deck.cards.count|pluralize }}</p>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;">
+    <div class="stack-actions" style="align-items:center;">
         <a href="{% url 'deck_edit' deck.id %}" class="btn btn-secondary btn-sm">Edit deck</a>
         <a href="{% url 'deck_practice_setup' deck.id %}" class="btn btn-secondary btn-sm">Practice</a>
         <a href="{% url 'study_start' %}" class="btn btn-primary btn-sm">Study now →</a>
@@ -16,43 +16,45 @@
 </div>
 
 <div class="card fade-in-2" style="padding:0;overflow:hidden;">
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th style="width:40%">Question</th>
-                <th style="width:40%">Answer</th>
-                <th>State</th>
-                <th>Next review</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for card in deck.cards.all %}
-            <tr>
-                <td>{{ card.question|truncatechars:100 }}</td>
-                <td>{{ card.answer|truncatechars:100 }}</td>
-                <td>
-                    <span class="badge
-                        {% if card.state == 'new' %}state-new
-                        {% elif card.state == 'learning' %}state-learning
-                        {% elif card.state == 'review' %}state-review
-                        {% else %}state-relearning{% endif %}">
-                        {{ card.state }}
-                    </span>
-                </td>
-                <td style="font-size:.8rem;color:var(--text-3);">{{ card.due|date:"M d, Y H:i" }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="4">
-                    <div class="empty-state" style="padding:40px 24px;">
-                        <span class="empty-icon">🗂</span>
-                        <p>No cards yet — <a href="{% url 'deck_edit' deck.id %}">add some cards</a> to this deck.</p>
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width:40%">Question</th>
+                    <th style="width:40%">Answer</th>
+                    <th>State</th>
+                    <th>Next review</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for card in deck.cards.all %}
+                <tr>
+                    <td>{{ card.question|truncatechars:100 }}</td>
+                    <td>{{ card.answer|truncatechars:100 }}</td>
+                    <td>
+                        <span class="badge
+                            {% if card.state == 'new' %}state-new
+                            {% elif card.state == 'learning' %}state-learning
+                            {% elif card.state == 'review' %}state-review
+                            {% else %}state-relearning{% endif %}">
+                            {{ card.state }}
+                        </span>
+                    </td>
+                    <td style="font-size:.8rem;color:var(--text-3);">{{ card.due|date:"M d, Y H:i" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4">
+                        <div class="empty-state" style="padding:40px 24px;">
+                            <span class="empty-icon">🗂</span>
+                            <p>No cards yet — <a href="{% url 'deck_edit' deck.id %}">add some cards</a> to this deck.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <div style="margin-top:24px;">

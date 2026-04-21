@@ -132,6 +132,41 @@ a:hover { text-decoration: underline; }
 
 .nav-user { font-size: 0.8rem; color: var(--text-3); font-weight: 500; }
 
+.nav-menu-toggle {
+    display: none;
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.mobile-nav-links {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding: 10px 24px 14px;
+    background: var(--surface);
+}
+
+.mobile-nav-links a {
+    display: block;
+    padding: 9px 10px;
+    color: var(--text-2);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.mobile-nav-links a:hover {
+    text-decoration: none;
+    background: var(--surface-2);
+    color: var(--text);
+}
+
 /* ── Page layout ── */
 .page-wrapper {
     max-width: 1040px;
@@ -289,6 +324,12 @@ textarea { resize: vertical; min-height: 90px; }
 .data-table tbody tr:hover { background: var(--surface-2); }
 .data-table tbody td { padding: 14px 16px; color: var(--text-2); vertical-align: top; }
 .data-table tbody td:first-child { color: var(--text); }
+
+.table-scroll {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
 
 /* ── Empty state ── */
 .empty-state { text-align: center; padding: 60px 24px; }
@@ -544,7 +585,6 @@ textarea { resize: vertical; min-height: 90px; }
 
 @media (max-width: 480px) {
     h1 { font-size: 1.625rem; }
-    .nav-links { display: none; }
     .deck-grid { grid-template-columns: 1fr; }
     .flashcard-face { padding: 32px 24px; }
 }
@@ -614,33 +654,6 @@ textarea { resize: vertical; min-height: 90px; }
 }
 
 
-.review-actions-row {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.review-rules-list {
-    padding-left: 18px;
-    color: var(--text-2);
-}
-
-.review-rules-list li + li {
-    margin-top: 6px;
-}
-
-@media (max-width: 720px) {
-    .review-actions-row {
-        flex-direction: column;
-    }
-
-    .review-actions-row .btn {
-        width: 100%;
-        justify-content: center;
-    }
-}
-
-
 .flip-actions-bar {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -675,5 +688,124 @@ textarea { resize: vertical; min-height: 90px; }
     .flip-actions-bar .btn {
         width: 100%;
         justify-content: center;
+    }
+}
+
+.stack-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 900px) {
+    .cta-bar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 720px) {
+    .nav-inner {
+        padding: 0 16px;
+        height: auto;
+        min-height: 60px;
+        flex-wrap: wrap;
+        row-gap: 8px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+    .page-wrapper {
+        padding: 28px 16px 56px;
+    }
+
+    .nav-links {
+        display: none;
+    }
+
+    .nav-menu-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: auto;
+    }
+
+    .nav-right {
+        width: 100%;
+        margin-left: 0;
+        justify-content: space-between;
+    }
+
+    .mobile-nav-links.is-open {
+        display: block;
+    }
+
+    .stats-row {
+        margin-bottom: 24px;
+    }
+
+    .due-count {
+        font-size: 3rem;
+    }
+
+    .review-meta {
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .flashcard-face {
+        min-height: 190px;
+        padding: 28px 22px;
+    }
+
+    .card-text {
+        font-size: 1.05rem;
+    }
+
+    .card-form-item {
+        padding: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .card {
+        padding: 16px;
+    }
+
+    .cta-bar .btn,
+    .stack-actions .btn,
+    .study-today-wrap .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .weekly-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .weekly-grid .day-card:nth-child(n+5) {
+        display: block;
+    }
+
+    .day-card {
+        padding: 10px 8px;
+    }
+
+    .day-count {
+        font-size: 1.35rem;
+    }
+
+    .auth-wrap {
+        padding: 24px 16px;
+        margin: -28px -16px -56px;
+    }
+
+    .auth-box {
+        padding: 24px 18px;
+    }
+
+    .table-scroll .data-table {
+        min-width: 540px;
     }
 }
