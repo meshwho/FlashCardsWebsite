@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from django.db import transaction
-
+from datetime import timedelta
 from fsrs import Card as FSRSCard
 from fsrs import Rating, Scheduler
 
@@ -17,7 +17,18 @@ class ReviewOutcome:
 
 class FSRSService:
     def __init__(self, scheduler=None):
-        self.scheduler = scheduler or Scheduler()
+        self.scheduler = scheduler or Scheduler(
+            desired_retention=0.96,
+            learning_steps=(
+                timedelta(minutes=1),
+                timedelta(minutes=10),
+            ),
+            relearning_steps=(
+                timedelta(minutes=10),
+            ),
+            maximum_interval=365,
+            enable_fuzzing=True,
+        )
 
     def _fsrs_state_to_model_state(self, state_value):
         if hasattr(state_value, "name"):

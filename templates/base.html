@@ -16,9 +16,7 @@
 
                 {% if user.is_authenticated %}
                     <div class="nav-right">
-                        <span class="nav-user">{{ user.username }}</span>
 
-                        <a href="#" class="btn btn-secondary btn-sm nav-profile-desktop">Profile</a>
 
                         <form method="post" action="{% url 'logout' %}" class="nav-logout-desktop">
                             {% csrf_token %}
@@ -69,6 +67,7 @@
                     <a href="{% url 'deck_list' %}">Decks</a>
                     <a href="{% url 'deck_create' %}">New deck</a>
                     <a href="{% url 'study_today' %}">Study</a>
+                    <a href="#" >Profile</a>
                 </nav>
             {% endif %}
         </div>
