@@ -21,7 +21,7 @@ def get_prompt_and_expected(card, direction):
     }
 
 
-def get_typing_result(expected_text, user_answer, hints_used, dont_know=False):
+def get_typing_result(expected_text, user_answer, hints_used, has_article=False, dont_know=False):
     if dont_know:
         return {
             "is_correct": False,
@@ -29,7 +29,7 @@ def get_typing_result(expected_text, user_answer, hints_used, dont_know=False):
             "rating_label": "Again",
         }
 
-    correct = is_correct_answer(user_answer, expected_text)
+    correct = is_correct_answer(user_answer, expected_text, has_article=has_article)
 
     if not correct:
         return {
@@ -54,8 +54,8 @@ def get_typing_result(expected_text, user_answer, hints_used, dont_know=False):
     }
 
 
-def get_hint_text(expected_text, hints_used):
-    return build_hint_mask(expected_text, hints_used)
+def get_hint_text(expected_text, hints_used, has_article=False):
+    return build_hint_mask(expected_text, hints_used, has_article=has_article)
 
 
 __all__ = [

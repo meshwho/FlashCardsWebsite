@@ -49,6 +49,19 @@
                             {{ form.answer }}
                             {% if form.answer.errors %}<ul class="errorlist">{% for e in form.answer.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
                         </div>
+                        <div class="form-group card-form-checkbox-group">
+                            <label for="{{ form.has_article.id_for_label }}">Has article</label>
+                            <div class="checkbox-row">
+                                {{ form.has_article }}
+                            </div>
+                            {% if form.has_article.errors %}
+                                <ul class="errorlist">
+                                    {% for e in form.has_article.errors %}
+                                        <li>{{ e }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="card-form-footer">
                         {% if form.instance.pk %}
@@ -76,6 +89,12 @@
                         <div class="form-group" style="margin-bottom:0;">
                             <label>Definition / Answer</label>
                             {{ empty_card_form.answer }}
+                        </div>
+                        <div class="form-group card-form-checkbox-group" style="margin-bottom:0;">
+                            <label for="{{ empty_card_form.has_article.id_for_label }}">Has article</label>
+                            <div class="checkbox-row">
+                                {{ empty_card_form.has_article }}
+                            </div>
                         </div>
                     </div>
                     <div class="card-form-footer">

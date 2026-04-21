@@ -10,34 +10,65 @@ def normalize_answer(text: str) -> str:
     return text
 
 
-def get_accepted_answers(answer_text: str) -> list[str]:
+def strip_article(text: str) -> str:
+    """
+    Remove the first word from the answer.
+    Example: 'der Tisch' -> 'Tisch'
+    """
+    text = normalize_answer(text)
+    parts = text.split(" ", 1)
+
+    if len(parts) == 2:
+        return parts[1].strip()
+
+    return text
+
+
+def get_accepted_answers(answer_text: str, has_article: bool = False) -> list[str]:
     parts = [normalize_answer(part) for part in (answer_text or "").split(",")]
-    return [part for part in parts if part]
+    parts = [part for part in parts if part]
+
+    accepted = set(parts)
+
+    if has_article:
+        for part in parts:
+            accepted.add(strip_article(part))
+
+    return list(accepted)
 
 
-def is_correct_answer(user_input: str, answer_text: str) -> bool:
+def is_correct_answer(user_input: str, answer_text: str, has_article: bool = False) -> bool:
     normalized_input = normalize_answer(user_input)
-    accepted_answers = get_accepted_answers(answer_text)
+    accepted_answers = get_accepted_answers(answer_text, has_article=has_article)
     return normalized_input in accepted_answers
 
 
-def get_primary_answer(answer_text: str) -> str:
-    answers = get_accepted_answers(answer_text)
-    return answers[0] if answers else ""
+def get_primary_answer(answer_text: str, has_article: bool = False) -> str:
+    answers = [normalize_answer(part) for part in (answer_text or "").split(",")]
+    answers = [part for part in answers if part]
+
+    if not answers:
+        return ""
+
+    primary = answers[0]
+
+    if has_article:
+        return strip_article(primary)
+
+    return primary
 
 
-def build_hint_mask(answer_text: str, hints_used: int) -> str:
+def build_hint_mask(answer_text: str, hints_used: int, has_article: bool = False) -> str:
     """
     Reveal progressively more letters from the first accepted answer.
-    Keeps spaces and punctuation visible.
+    If has_article=True, the first word is skipped for hint generation.
     """
-    primary = get_primary_answer(answer_text)
+    primary = get_primary_answer(answer_text, has_article=has_article)
     if not primary:
         return ""
 
     hints_used = max(0, min(hints_used, MAX_HINTS))
 
-    # How many letters to reveal for 1/2/3 hints
     reveal_map = {
         0: 0,
         1: 1,
@@ -63,13 +94,6 @@ def build_hint_mask(answer_text: str, hints_used: int) -> str:
 
 
 def get_rating_from_result(hints_used: int, knows_answer: bool) -> int:
-    """
-    FSRS rating mapping:
-    4 = Easy
-    3 = Good
-    2 = Hard
-    1 = Again
-    """
     if not knows_answer:
         return 1  # Again
 
@@ -79,4 +103,4 @@ def get_rating_from_result(hints_used: int, knows_answer: bool) -> int:
     if hints_used == 1:
         return 3  # Good
 
-    return 2  # Hard for 2 or 3 hints
+    return 2  # Hard

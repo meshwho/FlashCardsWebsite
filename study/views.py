@@ -491,10 +491,20 @@ def deck_practice_typing_view(request, deck_id):
                 return redirect("deck_practice_typing", deck_id=deck.id)
 
             feedback = "Not quite right. Try again or use a hint."
-            hint_text = get_hint_text(qa["expected"], hints_used)
+            hint_text = get_hint_text(
+                qa["expected"],
+                hints_used,
+                has_article=card.has_article if direction == "forward" else False,
+            )
 
         elif action == "dont_know":
-            result = get_typing_result(qa["expected"], user_answer, hints_used, dont_know=True)
+            result = get_typing_result(
+                qa["expected"],
+                user_answer,
+                hints_used,
+                has_article=card.has_article if direction == "forward" else False,
+                dont_know=False,
+            )
 
             add_practice_summary_item(
                 request,

@@ -1023,3 +1023,20 @@ textarea { resize: vertical; min-height: 90px; }
         justify-content: center;
     }
 }
+
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    min-height: 22px;
+}
+
+.checkbox-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.card-form-checkbox-group {
+    grid-column: 1 / -1;
+}

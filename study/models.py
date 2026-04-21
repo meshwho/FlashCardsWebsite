@@ -49,6 +49,7 @@ class Card(models.Model):
     )
     question = models.TextField()
     answer = models.TextField()
+    has_article = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     # Read model fields for querying and UI
