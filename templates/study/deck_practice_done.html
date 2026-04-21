@@ -29,28 +29,30 @@
     </div>
 
     <div class="card">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Prompt</th>
-                    <th>Your answer</th>
-                    <th>Hints</th>
-                    <th>Result</th>
-                    <th>Direction</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in summary.items %}
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
                     <tr>
-                        <td>{{ item.question|truncatechars:80 }}</td>
-                        <td>{{ item.user_answer|default:"—" }}</td>
-                        <td>{{ item.hints_used }}</td>
-                        <td>{{ item.rating_label }}</td>
-                        <td>{{ item.direction_label }}</td>
+                        <th>Prompt</th>
+                        <th>Your answer</th>
+                        <th>Hints</th>
+                        <th>Result</th>
+                        <th>Direction</th>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {% for item in summary.items %}
+                        <tr>
+                            <td>{{ item.question|truncatechars:80 }}</td>
+                            <td>{{ item.user_answer|default:"—" }}</td>
+                            <td>{{ item.hints_used }}</td>
+                            <td>{{ item.rating_label }}</td>
+                            <td>{{ item.direction_label }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 {% else %}
     <div class="card">

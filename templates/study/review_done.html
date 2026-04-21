@@ -28,7 +28,7 @@
         </div>
     </div>
 
-    <div style="display:flex;gap:10px;justify-content:center;margin-bottom:40px;">
+    <div class="stack-actions" style="justify-content:center;margin-bottom:40px;">
         <a href="{% url 'study_today' %}" class="btn btn-primary">Study more</a>
         <a href="{% url 'dashboard' %}" class="btn btn-secondary">Dashboard</a>
     </div>
@@ -36,28 +36,30 @@
     {% if summary.reviews %}
     <h2>Reviewed cards</h2>
 
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Question</th>
-                <th>Your answer</th>
-                <th>Hints</th>
-                <th>Result</th>
-                <th>Next review</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in summary.reviews %}
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
                 <tr>
-                    <td>{{ item.question|truncatechars:100 }}</td>
-                    <td>{{ item.user_answer|default:"—" }}</td>
-                    <td>{{ item.hints_used }}</td>
-                    <td>{{ item.rating_label }}</td>
-                    <td>{{ item.due_after }}</td>
+                    <th>Question</th>
+                    <th>Your answer</th>
+                    <th>Hints</th>
+                    <th>Result</th>
+                    <th>Next review</th>
                 </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                {% for item in summary.reviews %}
+                    <tr>
+                        <td>{{ item.question|truncatechars:100 }}</td>
+                        <td>{{ item.user_answer|default:"—" }}</td>
+                        <td>{{ item.hints_used }}</td>
+                        <td>{{ item.rating_label }}</td>
+                        <td>{{ item.due_after }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 {% endif %}
 </div>
 {% endblock %}
