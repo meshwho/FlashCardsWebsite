@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Deck{% endblock %}
+
+{% block content %}
+<h1>Edit Deck</h1>
+
+<form method="post" id="deck-edit-form">
+    {% csrf_token %}
+
+    <section style="margin-bottom: 24px;">
+        <label for="{{ deck_form.title.id_for_label }}"><strong>Deck title</strong></label><br>
+        {{ deck_form.title }}
+        {% if deck_form.title.errors %}
+            <div style="color: red;">{{ deck_form.title.errors }}</div>
+        {% endif %}
+    </section>
+
+    <section>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h2 style="margin: 0;">Cards</h2>
+            <button type="button" id="add-card-btn">Add card</button>
+        </div>
+
+        {{ card_formset.management_form }}
+
+        <div id="cards-container">
+            {% for form in card_formset %}
+                <div class="card-form"
+                     style="border: 1px solid #ccc; padding: 16px; margin-bottom: 16px;"
+                     data-existing="{% if form.instance.pk %}true{% else %}false{% endif %}">
+
+                    {{ form.id }}
+
+                    {% if form.non_field_errors %}
+                        <div style="color: red;">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <div style="margin-bottom: 12px;">
+                        <label><strong>Term / Question</strong></label><br>
+                        {{ form.question }}
+                        {% if form.question.errors %}
+                            <div style="color: red;">{{ form.question.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div style="margin-bottom: 12px;">
+                        <label><strong>Definition / Answer</strong></label><br>
+                        {{ form.answer }}
+                        {% if form.answer.errors %}
+                            <div style="color: red;">{{ form.answer.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    {% if form.instance.pk %}
+                        <div class="delete-existing-wrapper">
+                            <label style="display: none;">
+                                {{ form.DELETE }}
+                            </label>
+                            <button type="button" class="delete-card-btn">Delete card</button>
+                        </div>
+                    {% else %}
+                        <button type="button" class="remove-new-card-btn">Remove</button>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <template id="empty-card-template">
+            <div class="card-form"
+                 style="border: 1px solid #ccc; padding: 16px; margin-bottom: 16px;"
+                 data-existing="false">
+
+                {{ empty_card_form.id }}
+
+                <div style="margin-bottom: 12px;">
+                    <label><strong>Term / Question</strong></label><br>
+                    {{ empty_card_form.question }}
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label><strong>Definition / Answer</strong></label><br>
+                    {{ empty_card_form.answer }}
+                </div>
+
+                <button type="button" class="remove-new-card-btn">Remove</button>
+            </div>
+        </template>
+    </section>
+
+    <div style="margin-top: 24px;">
+        <button type="submit">Save deck</button>
+        <a href="{% url 'deck_detail' deck.id %}" style="margin-left: 12px;">Cancel</a>
+    </div>
+</form>
+
+<script>
+    (function () {
+        const addCardBtn = document.getElementById("add-card-btn");
+        const cardsContainer = document.getElementById("cards-container");
+        const totalFormsInput = document.getElementById("id_cards-TOTAL_FORMS");
+        const template = document.getElementById("empty-card-template");
+
+        function updateElementIndex(element, index) {
+            const oldName = element.getAttribute("name");
+            const oldId = element.getAttribute("id");
+            const oldFor = element.getAttribute("for");
+
+            if (oldName) {
+                element.setAttribute("name", oldName.replace(/__prefix__/g, index));
+            }
+            if (oldId) {
+                element.setAttribute("id", oldId.replace(/__prefix__/g, index));
+            }
+            if (oldFor) {
+                element.setAttribute("for", oldFor.replace(/__prefix__/g, index));
+            }
+        }
+
+        function addCardForm() {
+            const formIndex = parseInt(totalFormsInput.value, 10);
+            const fragment = template.content.cloneNode(true);
+
+            fragment.querySelectorAll("[name], [id], label").forEach((el) => {
+                updateElementIndex(el, formIndex);
+            });
+
+            cardsContainer.appendChild(fragment);
+            totalFormsInput.value = formIndex + 1;
+        }
+
+        addCardBtn.addEventListener("click", function () {
+            addCardForm();
+        });
+
+        cardsContainer.addEventListener("click", function (event) {
+            const deleteBtn = event.target.closest(".delete-card-btn");
+            const removeBtn = event.target.closest(".remove-new-card-btn");
+
+            if (deleteBtn) {
+                const cardForm = deleteBtn.closest(".card-form");
+                const deleteCheckbox = cardForm.querySelector('input[type="checkbox"][name$="-DELETE"]');
+
+                if (deleteCheckbox) {
+                    deleteCheckbox.checked = true;
+                    cardForm.style.display = "none";
+                }
+            }
+
+            if (removeBtn) {
+                const cardForm = removeBtn.closest(".card-form");
+                cardForm.remove();
+            }
+        });
+    })();
+</script>
+{% endblock %}

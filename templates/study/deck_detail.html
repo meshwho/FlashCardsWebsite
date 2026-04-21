@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}{{ deck.title }}{% endblock %}
+
+{% block content %}
+<h1>{{ deck.title }}</h1>
+
+<p>Cards: {{ deck.cards.count }}</p>
+
+<p>
+    <a href="{% url 'deck_edit' deck.id %}">Edit deck</a>
+</p>
+
+<table border="1" cellpadding="8" cellspacing="0" width="100%">
+    <thead>
+        <tr>
+            <th>Question</th>
+            <th>Answer</th>
+            <th>State</th>
+            <th>Next review</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for card in deck.cards.all %}
+            <tr>
+                <td>{{ card.question|truncatechars:120 }}</td>
+                <td>{{ card.answer|truncatechars:120 }}</td>
+                <td>{{ card.state }}</td>
+                <td>{{ card.due|date:"Y-m-d H:i" }}</td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="4">No cards yet.</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Study Today{% endblock %}
+
+{% block content %}
+<h1>Study Today</h1>
+
+<p>Cards due now: <strong>{{ due_count }}</strong></p>
+
+{% if due_count > 0 %}
+    <p>You have cards ready for review.</p>
+    <p>
+        <a href="{% url 'study_start' %}">Start review</a>
+    </p>
+{% else %}
+    <p>Nothing to review right now.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Review{% endblock %}
+
+{% block content %}
+<h1>Review</h1>
+
+<p><strong>Deck:</strong> {{ card.deck.title }}</p>
+<p><strong>Remaining due cards:</strong> {{ remaining_count }}</p>
+
+<div style="border: 1px solid #ccc; padding: 20px; margin-bottom: 20px;">
+    <h3>Question</h3>
+    <p>{{ card.question|linebreaksbr }}</p>
+</div>
+
+<div id="answer-block" style="display: none; border: 1px solid #ccc; padding: 20px; margin-bottom: 20px;">
+    <h3>Answer</h3>
+    <p>{{ card.answer|linebreaksbr }}</p>
+</div>
+
+<div id="show-answer-container" style="margin-bottom: 20px;">
+    <button type="button" id="show-answer-btn">Show answer</button>
+</div>
+
+<form method="post" id="rating-form" style="display: none;">
+    {% csrf_token %}
+    <button type="submit" name="rating" value="1">Again</button>
+    <button type="submit" name="rating" value="2">Hard</button>
+    <button type="submit" name="rating" value="3">Good</button>
+    <button type="submit" name="rating" value="4">Easy</button>
+</form>
+
+<script>
+    (function () {
+        const showAnswerBtn = document.getElementById("show-answer-btn");
+        const answerBlock = document.getElementById("answer-block");
+        const ratingForm = document.getElementById("rating-form");
+        const showAnswerContainer = document.getElementById("show-answer-container");
+
+        showAnswerBtn.addEventListener("click", function () {
+            answerBlock.style.display = "block";
+            ratingForm.style.display = "block";
+            showAnswerContainer.style.display = "none";
+        });
+    })();
+</script>
+{% endblock %}

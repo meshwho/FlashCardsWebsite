@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Review Complete{% endblock %}
+
+{% block content %}
+<h1>Review Complete</h1>
+
+<p>Total reviewed: <strong>{{ summary.total_reviewed }}</strong></p>
+
+<ul>
+    <li>Again: {{ summary.again_count }}</li>
+    <li>Hard: {{ summary.hard_count }}</li>
+    <li>Good: {{ summary.good_count }}</li>
+    <li>Easy: {{ summary.easy_count }}</li>
+</ul>
+
+{% if summary.reviews %}
+    <h2>Reviewed cards</h2>
+
+    <table border="1" cellpadding="8" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Question</th>
+                <th>Result</th>
+                <th>Next review</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in summary.reviews %}
+                <tr>
+                    <td>{{ item.question|truncatechars:100 }}</td>
+                    <td>{{ item.rating_label }}</td>
+                    <td>{{ item.due_after }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+
+<p style="margin-top: 20px;">
+    <a href="{% url 'study_today' %}">Back to study page</a>
+</p>
+{% endblock %}
