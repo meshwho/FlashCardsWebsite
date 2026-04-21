@@ -1,17 +1,28 @@
 {% extends "base.html" %}
-
-{% block title %}Sign Up{% endblock %}
+{% block title %}Sign up — FlashCards{% endblock %}
 
 {% block content %}
-<h1>Sign Up</h1>
+<div class="auth-wrap">
+    <div class="auth-box fade-in">
+        <div class="auth-logo">Flash<span>Cards</span></div>
+        <div class="auth-sub">Create an account to start studying</div>
 
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Create account</button>
-</form>
+        <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<p style="font-size:.75rem;color:var(--text-3);margin-top:4px;">{{ field.help_text }}</p>{% endif %}
+                {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:11px;">Create account</button>
+        </form>
 
-<p>
-    <a href="{% url 'login' %}">Already have an account?</a>
-</p>
+        <div class="auth-footer">
+            Already have an account? <a href="{% url 'login' %}">Log in</a>
+        </div>
+    </div>
+</div>
 {% endblock %}

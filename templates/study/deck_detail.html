@@ -1,38 +1,59 @@
 {% extends "base.html" %}
-
-{% block title %}{{ deck.title }}{% endblock %}
+{% block title %}{{ deck.title }} — FlashCards{% endblock %}
 
 {% block content %}
-<h1>{{ deck.title }}</h1>
+<div class="page-header-row fade-in">
+    <div>
+        <h1>{{ deck.title }}</h1>
+        <p class="subtitle">{{ deck.cards.count }} card{{ deck.cards.count|pluralize }}</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+        <a href="{% url 'deck_edit' deck.id %}" class="btn btn-secondary btn-sm">Edit deck</a>
+        <a href="{% url 'study_start' %}" class="btn btn-primary btn-sm">Study now →</a>
+    </div>
+</div>
 
-<p>Cards: {{ deck.cards.count }}</p>
-
-<p>
-    <a href="{% url 'deck_edit' deck.id %}">Edit deck</a>
-</p>
-
-<table border="1" cellpadding="8" cellspacing="0" width="100%">
-    <thead>
-        <tr>
-            <th>Question</th>
-            <th>Answer</th>
-            <th>State</th>
-            <th>Next review</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for card in deck.cards.all %}
+<div class="card fade-in-2" style="padding:0;overflow:hidden;">
+    <table class="data-table">
+        <thead>
             <tr>
-                <td>{{ card.question|truncatechars:120 }}</td>
-                <td>{{ card.answer|truncatechars:120 }}</td>
-                <td>{{ card.state }}</td>
-                <td>{{ card.due|date:"Y-m-d H:i" }}</td>
+                <th style="width:40%">Question</th>
+                <th style="width:40%">Answer</th>
+                <th>State</th>
+                <th>Next review</th>
             </tr>
-        {% empty %}
+        </thead>
+        <tbody>
+            {% for card in deck.cards.all %}
             <tr>
-                <td colspan="4">No cards yet.</td>
+                <td>{{ card.question|truncatechars:100 }}</td>
+                <td>{{ card.answer|truncatechars:100 }}</td>
+                <td>
+                    <span class="badge
+                        {% if card.state == 'new' %}state-new
+                        {% elif card.state == 'learning' %}state-learning
+                        {% elif card.state == 'review' %}state-review
+                        {% else %}state-relearning{% endif %}">
+                        {{ card.state }}
+                    </span>
+                </td>
+                <td style="font-size:.8rem;color:var(--text-3);">{{ card.due|date:"M d, Y H:i" }}</td>
             </tr>
-        {% endfor %}
-    </tbody>
-</table>
+            {% empty %}
+            <tr>
+                <td colspan="4">
+                    <div class="empty-state" style="padding:40px 24px;">
+                        <span class="empty-icon">🗂</span>
+                        <p>No cards yet — <a href="{% url 'deck_edit' deck.id %}">add some cards</a> to this deck.</p>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div style="margin-top:24px;">
+    <a href="{% url 'deck_list' %}" class="btn btn-ghost btn-sm">← Back to decks</a>
+</div>
 {% endblock %}

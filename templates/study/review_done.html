@@ -1,43 +1,70 @@
 {% extends "base.html" %}
-
-{% block title %}Review Complete{% endblock %}
+{% block title %}Review Complete — FlashCards{% endblock %}
 
 {% block content %}
-<h1>Review Complete</h1>
+<div style="max-width:680px;margin:0 auto;" class="fade-in">
+    <div style="text-align:center;padding:48px 24px 40px;">
+        <div style="font-size:2.5rem;margin-bottom:12px;">✅</div>
+        <h1>Review complete!</h1>
+        <p style="margin-top:6px;">You reviewed <strong style="color:var(--text);">{{ summary.total_reviewed }}</strong> card{{ summary.total_reviewed|pluralize }} this session.</p>
+    </div>
 
-<p>Total reviewed: <strong>{{ summary.total_reviewed }}</strong></p>
+    <div class="summary-grid fade-in-2">
+        <div class="summary-stat s-again">
+            <div class="s-value">{{ summary.again_count }}</div>
+            <div class="s-label">Again</div>
+        </div>
+        <div class="summary-stat s-hard">
+            <div class="s-value">{{ summary.hard_count }}</div>
+            <div class="s-label">Hard</div>
+        </div>
+        <div class="summary-stat s-good">
+            <div class="s-value">{{ summary.good_count }}</div>
+            <div class="s-label">Good</div>
+        </div>
+        <div class="summary-stat s-easy">
+            <div class="s-value">{{ summary.easy_count }}</div>
+            <div class="s-label">Easy</div>
+        </div>
+    </div>
 
-<ul>
-    <li>Again: {{ summary.again_count }}</li>
-    <li>Hard: {{ summary.hard_count }}</li>
-    <li>Good: {{ summary.good_count }}</li>
-    <li>Easy: {{ summary.easy_count }}</li>
-</ul>
+    <div style="display:flex;gap:10px;justify-content:center;margin-bottom:40px;">
+        <a href="{% url 'study_today' %}" class="btn btn-primary">Study more</a>
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">Dashboard</a>
+    </div>
 
-{% if summary.reviews %}
-    <h2>Reviewed cards</h2>
-
-    <table border="1" cellpadding="8" cellspacing="0">
-        <thead>
-            <tr>
-                <th>Question</th>
-                <th>Result</th>
-                <th>Next review</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in summary.reviews %}
+    {% if summary.reviews %}
+    <div class="card fade-in-3" style="padding:0;overflow:hidden;">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border);">
+            <h3>Session details</h3>
+        </div>
+        <table class="data-table">
+            <thead>
                 <tr>
-                    <td>{{ item.question|truncatechars:100 }}</td>
-                    <td>{{ item.rating_label }}</td>
-                    <td>{{ item.due_after }}</td>
+                    <th>Question</th>
+                    <th>Result</th>
+                    <th>Next review</th>
                 </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-{% endif %}
-
-<p style="margin-top: 20px;">
-    <a href="{% url 'study_today' %}">Back to study page</a>
-</p>
+            </thead>
+            <tbody>
+                {% for item in summary.reviews %}
+                <tr>
+                    <td>{{ item.question|truncatechars:90 }}</td>
+                    <td>
+                        <span class="badge
+                            {% if item.rating_label == 'Again' %}s-again
+                            {% elif item.rating_label == 'Hard' %}s-hard
+                            {% elif item.rating_label == 'Good' %}s-good
+                            {% else %}s-easy{% endif %}">
+                            {{ item.rating_label }}
+                        </span>
+                    </td>
+                    <td style="font-size:.8rem;">{{ item.due_after }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
 {% endblock %}

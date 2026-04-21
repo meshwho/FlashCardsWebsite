@@ -1,18 +1,19 @@
 {% extends "base.html" %}
-
-{% block title %}Study Today{% endblock %}
+{% block title %}Study Today — FlashCards{% endblock %}
 
 {% block content %}
-<h1>Study Today</h1>
-
-<p>Cards due now: <strong>{{ due_count }}</strong></p>
-
-{% if due_count > 0 %}
-    <p>You have cards ready for review.</p>
-    <p>
-        <a href="{% url 'study_start' %}">Start review</a>
-    </p>
-{% else %}
-    <p>Nothing to review right now.</p>
-{% endif %}
+<div class="card study-today-wrap fade-in">
+    {% if due_count > 0 %}
+    <div class="due-count">{{ due_count }}</div>
+    <p class="due-label">card{{ due_count|pluralize }} due for review</p>
+    <a href="{% url 'study_start' %}" class="btn btn-primary" style="padding:12px 32px;font-size:1rem;">Start review →</a>
+    {% else %}
+    <div style="padding:24px 0;">
+        <div style="font-size:2.5rem;margin-bottom:16px;">🎉</div>
+        <h2 style="margin-bottom:8px;">All done for now!</h2>
+        <p style="margin-bottom:24px;">No cards are due. Check back later or explore your decks.</p>
+        <a href="{% url 'deck_list' %}" class="btn btn-secondary">Browse decks</a>
+    </div>
+    {% endif %}
+</div>
 {% endblock %}

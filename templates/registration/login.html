@@ -1,17 +1,32 @@
 {% extends "base.html" %}
-
-{% block title %}Login{% endblock %}
+{% block title %}Log in — FlashCards{% endblock %}
 
 {% block content %}
-<h1>Login</h1>
+<div class="auth-wrap">
+    <div class="auth-box fade-in">
+        <div class="auth-logo">Flash<span>Cards</span></div>
+        <div class="auth-sub">Welcome back — sign in to continue</div>
 
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Login</button>
-</form>
+        <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+            {% endfor %}
+            {% if form.non_field_errors %}
+            <div class="form-error-banner">
+                <p>{% for e in form.non_field_errors %}{{ e }}{% endfor %}</p>
+            </div>
+            {% endif %}
+            <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:11px;">Log in</button>
+        </form>
 
-<p>
-    <a href="{% url 'signup' %}">Create account</a>
-</p>
+        <div class="auth-footer">
+            Don't have an account? <a href="{% url 'signup' %}">Sign up</a>
+        </div>
+    </div>
+</div>
 {% endblock %}

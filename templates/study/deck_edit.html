@@ -1,157 +1,134 @@
 {% extends "base.html" %}
-
-{% block title %}Edit Deck{% endblock %}
+{% block title %}Edit Deck — FlashCards{% endblock %}
 
 {% block content %}
-<h1>Edit Deck</h1>
-
-<form method="post" id="deck-edit-form">
-    {% csrf_token %}
-
-    <section style="margin-bottom: 24px;">
-        <label for="{{ deck_form.title.id_for_label }}"><strong>Deck title</strong></label><br>
-        {{ deck_form.title }}
-        {% if deck_form.title.errors %}
-            <div style="color: red;">{{ deck_form.title.errors }}</div>
-        {% endif %}
-    </section>
-
-    <section>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h2 style="margin: 0;">Cards</h2>
-            <button type="button" id="add-card-btn">Add card</button>
+<div class="fade-in">
+    <div class="page-header-row">
+        <div>
+            <h1>Edit deck</h1>
+            <p class="subtitle">Update title or manage cards</p>
         </div>
-
-        {{ card_formset.management_form }}
-
-        <div id="cards-container">
-            {% for form in card_formset %}
-                <div class="card-form"
-                     style="border: 1px solid #ccc; padding: 16px; margin-bottom: 16px;"
-                     data-existing="{% if form.instance.pk %}true{% else %}false{% endif %}">
-
-                    {{ form.id }}
-
-                    {% if form.non_field_errors %}
-                        <div style="color: red;">{{ form.non_field_errors }}</div>
-                    {% endif %}
-
-                    <div style="margin-bottom: 12px;">
-                        <label><strong>Term / Question</strong></label><br>
-                        {{ form.question }}
-                        {% if form.question.errors %}
-                            <div style="color: red;">{{ form.question.errors }}</div>
-                        {% endif %}
-                    </div>
-
-                    <div style="margin-bottom: 12px;">
-                        <label><strong>Definition / Answer</strong></label><br>
-                        {{ form.answer }}
-                        {% if form.answer.errors %}
-                            <div style="color: red;">{{ form.answer.errors }}</div>
-                        {% endif %}
-                    </div>
-
-                    {% if form.instance.pk %}
-                        <div class="delete-existing-wrapper">
-                            <label style="display: none;">
-                                {{ form.DELETE }}
-                            </label>
-                            <button type="button" class="delete-card-btn">Delete card</button>
-                        </div>
-                    {% else %}
-                        <button type="button" class="remove-new-card-btn">Remove</button>
-                    {% endif %}
-                </div>
-            {% endfor %}
-        </div>
-
-        <template id="empty-card-template">
-            <div class="card-form"
-                 style="border: 1px solid #ccc; padding: 16px; margin-bottom: 16px;"
-                 data-existing="false">
-
-                {{ empty_card_form.id }}
-
-                <div style="margin-bottom: 12px;">
-                    <label><strong>Term / Question</strong></label><br>
-                    {{ empty_card_form.question }}
-                </div>
-
-                <div style="margin-bottom: 12px;">
-                    <label><strong>Definition / Answer</strong></label><br>
-                    {{ empty_card_form.answer }}
-                </div>
-
-                <button type="button" class="remove-new-card-btn">Remove</button>
-            </div>
-        </template>
-    </section>
-
-    <div style="margin-top: 24px;">
-        <button type="submit">Save deck</button>
-        <a href="{% url 'deck_detail' deck.id %}" style="margin-left: 12px;">Cancel</a>
+        <a href="{% url 'deck_detail' deck.id %}" class="btn btn-ghost btn-sm">← Cancel</a>
     </div>
-</form>
+
+    <form method="post" id="deck-edit-form">
+        {% csrf_token %}
+
+        <div class="card fade-in-2" style="margin-bottom:24px;">
+            <h3 style="margin-bottom:16px;">Deck details</h3>
+            <div class="form-group" style="max-width:400px;margin-bottom:0;">
+                <label for="{{ deck_form.title.id_for_label }}">Deck title</label>
+                {{ deck_form.title }}
+                {% if deck_form.title.errors %}<ul class="errorlist">{% for e in deck_form.title.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+        </div>
+
+        <div class="fade-in-3">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                <h2>Cards</h2>
+                <button type="button" id="add-card-btn" class="btn btn-secondary btn-sm">+ Add card</button>
+            </div>
+
+            {{ card_formset.management_form }}
+
+            <div id="cards-container">
+                {% for form in card_formset %}
+                <div class="card-form-item"
+                     data-existing="{% if form.instance.pk %}true{% else %}false{% endif %}">
+                    {{ form.id }}
+                    {% if form.non_field_errors %}<p style="color:var(--red);font-size:.875rem;margin-bottom:10px;">{{ form.non_field_errors }}</p>{% endif %}
+                    <div class="card-num">Card {{ forloop.counter }}</div>
+                    <div class="card-form-row">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Term / Question</label>
+                            {{ form.question }}
+                            {% if form.question.errors %}<ul class="errorlist">{% for e in form.question.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Definition / Answer</label>
+                            {{ form.answer }}
+                            {% if form.answer.errors %}<ul class="errorlist">{% for e in form.answer.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                        </div>
+                    </div>
+                    <div class="card-form-footer">
+                        {% if form.instance.pk %}
+                        <div class="delete-existing-wrapper">
+                            <label style="display:none;">{{ form.DELETE }}</label>
+                            <button type="button" class="btn btn-danger btn-sm delete-card-btn">Delete card</button>
+                        </div>
+                        {% else %}
+                        <button type="button" class="btn btn-ghost btn-sm remove-new-card-btn">Remove</button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <template id="empty-card-template">
+                <div class="card-form-item" data-existing="false">
+                    {{ empty_card_form.id }}
+                    <div class="card-num">New card</div>
+                    <div class="card-form-row">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Term / Question</label>
+                            {{ empty_card_form.question }}
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Definition / Answer</label>
+                            {{ empty_card_form.answer }}
+                        </div>
+                    </div>
+                    <div class="card-form-footer">
+                        <button type="button" class="btn btn-ghost btn-sm remove-new-card-btn">Remove</button>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:28px;padding-top:24px;border-top:1px solid var(--border);">
+            <button type="submit" class="btn btn-primary">Save deck</button>
+            <a href="{% url 'deck_detail' deck.id %}" class="btn btn-ghost">Cancel</a>
+        </div>
+    </form>
+</div>
 
 <script>
-    (function () {
-        const addCardBtn = document.getElementById("add-card-btn");
-        const cardsContainer = document.getElementById("cards-container");
-        const totalFormsInput = document.getElementById("id_cards-TOTAL_FORMS");
-        const template = document.getElementById("empty-card-template");
+(function () {
+    const addCardBtn = document.getElementById("add-card-btn");
+    const cardsContainer = document.getElementById("cards-container");
+    const totalFormsInput = document.getElementById("id_cards-TOTAL_FORMS");
+    const template = document.getElementById("empty-card-template");
 
-        function updateElementIndex(element, index) {
-            const oldName = element.getAttribute("name");
-            const oldId = element.getAttribute("id");
-            const oldFor = element.getAttribute("for");
-
-            if (oldName) {
-                element.setAttribute("name", oldName.replace(/__prefix__/g, index));
-            }
-            if (oldId) {
-                element.setAttribute("id", oldId.replace(/__prefix__/g, index));
-            }
-            if (oldFor) {
-                element.setAttribute("for", oldFor.replace(/__prefix__/g, index));
-            }
-        }
-
-        function addCardForm() {
-            const formIndex = parseInt(totalFormsInput.value, 10);
-            const fragment = template.content.cloneNode(true);
-
-            fragment.querySelectorAll("[name], [id], label").forEach((el) => {
-                updateElementIndex(el, formIndex);
-            });
-
-            cardsContainer.appendChild(fragment);
-            totalFormsInput.value = formIndex + 1;
-        }
-
-        addCardBtn.addEventListener("click", function () {
-            addCardForm();
+    function updateElementIndex(element, index) {
+        ["name","id","for"].forEach(attr => {
+            const val = element.getAttribute(attr);
+            if (val) element.setAttribute(attr, val.replace(/__prefix__/g, index));
         });
+    }
 
-        cardsContainer.addEventListener("click", function (event) {
-            const deleteBtn = event.target.closest(".delete-card-btn");
-            const removeBtn = event.target.closest(".remove-new-card-btn");
+    function addCardForm() {
+        const formIndex = parseInt(totalFormsInput.value, 10);
+        const fragment = template.content.cloneNode(true);
+        fragment.querySelectorAll("[name],[id],label").forEach(el => updateElementIndex(el, formIndex));
+        cardsContainer.appendChild(fragment);
+        totalFormsInput.value = formIndex + 1;
+        cardsContainer.lastElementChild.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
 
-            if (deleteBtn) {
-                const cardForm = deleteBtn.closest(".card-form");
-                const deleteCheckbox = cardForm.querySelector('input[type="checkbox"][name$="-DELETE"]');
+    addCardBtn.addEventListener("click", addCardForm);
 
-                if (deleteCheckbox) {
-                    deleteCheckbox.checked = true;
-                    cardForm.style.display = "none";
-                }
-            }
-
-            if (removeBtn) {
-                const cardForm = removeBtn.closest(".card-form");
-                cardForm.remove();
-            }
-        });
-    })();
+    cardsContainer.addEventListener("click", function (e) {
+        const deleteBtn = e.target.closest(".delete-card-btn");
+        const removeBtn = e.target.closest(".remove-new-card-btn");
+        if (deleteBtn) {
+            const cardForm = deleteBtn.closest(".card-form-item");
+            const cb = cardForm.querySelector('input[type="checkbox"][name$="-DELETE"]');
+            if (cb) { cb.checked = true; cardForm.style.opacity = ".35"; cardForm.style.pointerEvents = "none"; }
+        }
+        if (removeBtn) {
+            removeBtn.closest(".card-form-item").remove();
+        }
+    });
+})();
 </script>
 {% endblock %}

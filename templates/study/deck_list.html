@@ -1,23 +1,35 @@
 {% extends "base.html" %}
-
-{% block title %}Decks{% endblock %}
+{% block title %}Decks — FlashCards{% endblock %}
 
 {% block content %}
-<h1>Decks</h1>
+<div class="page-header-row fade-in">
+    <div>
+        <h1>Decks</h1>
+        <p class="subtitle">All your flashcard collections</p>
+    </div>
+</div>
 
-<p>
-    <a href="{% url 'deck_create' %}">Create new deck</a>
-</p>
+<div class="deck-grid fade-in-2">
+    <a href="{% url 'deck_create' %}" class="new-deck-card">
+        <div class="plus">+</div>
+        <span>Create new deck</span>
+    </a>
 
-<ul>
     {% for deck in decks %}
-        <li>
-            <a href="{% url 'deck_detail' deck.id %}">{{ deck.title }}</a>
-            —
-            <a href="{% url 'deck_edit' deck.id %}">Edit</a>
-        </li>
+    <a href="{% url 'deck_detail' deck.id %}" class="deck-card">
+        <div class="deck-title">{{ deck.title }}</div>
+        <div class="deck-footer">
+            <span class="badge badge-muted">{{ deck.cards.count }} card{{ deck.cards.count|pluralize }}</span>
+            <span class="deck-edit-link" onclick="event.preventDefault(); window.location='{% url 'deck_edit' deck.id %}'">Edit ›</span>
+        </div>
+    </a>
     {% empty %}
-        <li>No decks yet.</li>
+    <div style="grid-column:1/-1;">
+        <div class="empty-state">
+            <span class="empty-icon">📚</span>
+            <p>No decks yet — create your first one above.</p>
+        </div>
+    </div>
     {% endfor %}
-</ul>
+</div>
 {% endblock %}
