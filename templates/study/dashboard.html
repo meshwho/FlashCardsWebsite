@@ -47,4 +47,134 @@
         </div>
     </div>
 </div>
+{% if messages %}
+    {% for message in messages %}
+        <div class="form-error-banner fade-in">
+            <p>{{ message }}</p>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<hr class="divider">
+
+<section class="card fade-in-2">
+    <div class="page-header" style="margin-bottom: 20px;">
+        <h2>Review schedule</h2>
+        <p class="subtitle">Choose how many times per day you can review and at what time.</p>
+    </div>
+
+    <form method="post" id="schedule-form">
+        {% csrf_token %}
+        <input type="hidden" name="dashboard_action" value="save_schedule">
+
+        <div class="form-group">
+            <label for="{{ schedule_form.reviews_per_day.id_for_label }}">Reviews per day</label>
+            {{ schedule_form.reviews_per_day }}
+            {% if schedule_form.reviews_per_day.errors %}
+                {{ schedule_form.reviews_per_day.errors }}
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ schedule_form.timezone.id_for_label }}">Timezone</label>
+            {{ schedule_form.timezone }}
+            {% if schedule_form.timezone.errors %}
+                {{ schedule_form.timezone.errors }}
+            {% endif %}
+        </div>
+
+        <div class="form-group schedule-inline-check">
+            <label for="{{ schedule_form.is_active.id_for_label }}">Use schedule rounding</label>
+            {{ schedule_form.is_active }}
+        </div>
+
+        <div class="page-header" style="margin-bottom: 16px;">
+            <h3>Review times</h3>
+        </div>
+
+        <div id="slots-container" class="schedule-slots-list">
+            {% for form in slot_formset %}
+                <div class="card schedule-slot-card">
+                    <div class="schedule-slot-row">
+                        <div>
+                            <label>Slot {{ forloop.counter }}</label>
+                        </div>
+                        <div>
+                            <input
+                                type="time"
+                                name="slot_{{ forloop.counter0 }}_time"
+                                value="{{ form.initial.time|time:'H:i' }}"
+                                required
+                            >
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button type="submit" class="btn btn-primary">Save schedule</button>
+        </div>
+    </form>
+</section>
+
+<script>
+    (function () {
+        const reviewsPerDayInput = document.getElementById("{{ schedule_form.reviews_per_day.id_for_label }}");
+        const slotsContainer = document.getElementById("slots-container");
+
+        function getCurrentSlotValues() {
+            return Array.from(
+                slotsContainer.querySelectorAll('input[type="time"]')
+            ).map(input => input.value);
+        }
+
+        function defaultSlotValue(index, total) {
+            const defaults = ["09:00", "14:00", "20:00", "08:00", "12:00", "16:00", "21:00"];
+            if (defaults[index]) return defaults[index];
+
+            const startHour = 8;
+            const endHour = 22;
+            const step = Math.max(1, Math.floor((endHour - startHour) / Math.max(total - 1, 1)));
+            const hour = Math.min(endHour, startHour + index * step);
+            return String(hour).padStart(2, "0") + ":00";
+        }
+
+        function renderSlots(count) {
+            const currentValues = getCurrentSlotValues();
+            slotsContainer.innerHTML = "";
+
+            for (let i = 0; i < count; i++) {
+                const value = currentValues[i] || defaultSlotValue(i, count);
+
+                const slotCard = document.createElement("div");
+                slotCard.className = "card schedule-slot-card";
+                slotCard.innerHTML = `
+                    <div class="schedule-slot-row">
+                        <div>
+                            <label>Slot ${i + 1}</label>
+                        </div>
+                        <div>
+                            <input
+                                type="time"
+                                name="slot_${i}_time"
+                                value="${value}"
+                                required
+                            >
+                        </div>
+                    </div>
+                `;
+
+                slotsContainer.appendChild(slotCard);
+            }
+        }
+
+        if (reviewsPerDayInput) {
+            reviewsPerDayInput.addEventListener("change", function () {
+                const count = parseInt(this.value, 10) || 1;
+                renderSlots(count);
+            });
+        }
+    })();
+</script>
 {% endblock %}

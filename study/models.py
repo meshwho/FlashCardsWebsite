@@ -131,3 +131,40 @@ class ReviewLog(models.Model):
 
     def __str__(self):
         return f"Review(card={self.card_id}, rating={self.rating})"
+
+
+class UserReviewSchedule(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="review_schedule",
+    )
+    timezone = models.CharField(max_length=64, default="Europe/Zaporozhye")
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"Review schedule for {self.user.username}"
+
+
+class ReviewSlot(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    schedule = models.ForeignKey(
+        UserReviewSchedule,
+        on_delete=models.CASCADE,
+        related_name="slots",
+    )
+    position = models.PositiveSmallIntegerField()
+    time = models.TimeField()
+
+    class Meta:
+        ordering = ["position", "time"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["schedule", "position"],
+                name="unique_slot_position_per_schedule",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.schedule.user.username} - {self.time}"

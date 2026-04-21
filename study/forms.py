@@ -2,9 +2,10 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.forms import BaseInlineFormSet, inlineformset_factory
-
 from .models import Card, Deck
-
+from datetime import time
+from django.forms import formset_factory
+from .models import ReviewSlot, UserReviewSchedule
 
 class SignUpForm(UserCreationForm):
     email = forms.EmailField(required=True)
@@ -100,4 +101,39 @@ CardInlineFormSet = inlineformset_factory(
     fields=["question", "answer"],
     extra=1,
     can_delete=True,
+)
+
+class ReviewScheduleForm(forms.ModelForm):
+    reviews_per_day = forms.IntegerField(
+        min_value=1,
+        max_value=10,
+        initial=3,
+        label="Reviews per day",
+    )
+
+    class Meta:
+        model = UserReviewSchedule
+        fields = ["timezone", "is_active"]
+        widgets = {
+            "timezone": forms.TextInput(attrs={"class": "form-control"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        slots_count = kwargs.pop("slots_count", 3)
+        super().__init__(*args, **kwargs)
+        self.fields["reviews_per_day"].initial = slots_count
+
+
+class ReviewSlotForm(forms.Form):
+    time = forms.TimeField(
+        widget=forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
+        label="",
+    )
+
+
+ReviewSlotFormSet = formset_factory(
+    ReviewSlotForm,
+    extra=0,
+    min_num=1,
+    validate_min=True,
 )

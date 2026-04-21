@@ -1,23 +1,34 @@
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
-
-from .forms import CardInlineFormSet, DeckForm, SignUpForm
 from .review_session import (
     add_review_to_session,
     clear_review_session,
     get_review_session_summary,
     start_review_session,
 )
+from .services import FSRSService
+from django.contrib import messages
+from django.db import transaction
+from .forms import (
+    CardInlineFormSet,
+    DeckForm,
+    ReviewScheduleForm,
+    ReviewSlotFormSet,
+    SignUpForm,
+)
+from .models import ReviewSlot
+from .schedule_services import reschedule_all_user_cards
 from .selectors import (
+    ensure_default_review_slots,
     get_due_cards_for_user,
     get_next_due_card_for_user,
+    get_or_create_user_review_schedule,
     get_user_deck_or_404,
     get_user_decks,
+    get_user_review_slots,
     get_weekly_due_schedule_for_user,
 )
-from .services import FSRSService
-
 
 def signup_view(request):
     if request.user.is_authenticated:
@@ -40,12 +51,81 @@ def dashboard_view(request):
     due_count = get_due_cards_for_user(request.user).count()
     weekly_schedule = get_weekly_due_schedule_for_user(request.user, days=7)
 
+    schedule = ensure_default_review_slots(request.user)
+    existing_slots = list(
+        ReviewSlot.objects.filter(schedule=schedule).order_by("position", "time")
+    )
+
+    if request.method == "POST":
+        schedule_form = ReviewScheduleForm(
+            request.POST,
+            instance=schedule,
+            slots_count=len(existing_slots) or 3,
+        )
+
+        reviews_per_day = int(request.POST.get("reviews_per_day", len(existing_slots) or 3))
+        posted_slot_data = []
+
+        for i in range(reviews_per_day):
+            posted_slot_data.append(
+                {"time": request.POST.get(f"slot_{i}_time")}
+            )
+
+        slot_formset = ReviewSlotFormSet(data={
+            "form-TOTAL_FORMS": str(reviews_per_day),
+            "form-INITIAL_FORMS": "0",
+            "form-MIN_NUM_FORMS": "1",
+            "form-MAX_NUM_FORMS": "1000",
+            **{f"form-{i}-time": posted_slot_data[i]["time"] for i in range(reviews_per_day)},
+        })
+
+        if schedule_form.is_valid() and slot_formset.is_valid():
+            with transaction.atomic():
+                schedule = schedule_form.save()
+
+                ReviewSlot.objects.filter(schedule=schedule).delete()
+
+                cleaned_slots = []
+                for idx, form in enumerate(slot_formset.forms, start=1):
+                    slot_time = form.cleaned_data["time"]
+                    cleaned_slots.append(
+                        ReviewSlot(
+                            schedule=schedule,
+                            position=idx,
+                            time=slot_time,
+                        )
+                    )
+
+                ReviewSlot.objects.bulk_create(cleaned_slots)
+
+                updated_count = reschedule_all_user_cards(request.user)
+
+            messages.success(
+                request,
+                f"Schedule saved. Updated {updated_count} card due times."
+            )
+            return redirect("dashboard")
+    else:
+        slot_times = get_user_review_slots(request.user)
+
+        schedule_form = ReviewScheduleForm(
+            instance=schedule,
+            slots_count=len(slot_times),
+            initial={"reviews_per_day": len(slot_times)},
+        )
+
+        slot_formset = ReviewSlotFormSet(
+            initial=[{"time": slot_time} for slot_time in slot_times]
+        )
+
     return render(
         request,
         "study/dashboard.html",
         {
             "due_count": due_count,
             "weekly_schedule": weekly_schedule,
+            "schedule_form": schedule_form,
+            "slot_formset": slot_formset,
         },
     )
 

@@ -548,3 +548,41 @@ textarea { resize: vertical; min-height: 90px; }
     .deck-grid { grid-template-columns: 1fr; }
     .flashcard-face { padding: 32px 24px; }
 }
+
+.schedule-inline-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.schedule-inline-check label {
+    margin-bottom: 0;
+}
+
+.schedule-inline-check input[type="checkbox"] {
+    width: auto;
+    transform: scale(1.1);
+}
+
+.schedule-slots-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.schedule-slot-card {
+    padding: 16px 18px;
+}
+
+.schedule-slot-row {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: 16px;
+    align-items: center;
+}
+
+@media (max-width: 720px) {
+    .schedule-slot-row {
+        grid-template-columns: 1fr;
+    }
+}

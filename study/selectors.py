@@ -1,6 +1,6 @@
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-
+from datetime import time as dt_time
 from .models import Card, Deck
 from datetime import timedelta
 from django.db.models import Count
@@ -85,5 +85,44 @@ def get_weekly_due_schedule_for_user(user, days=7):
                 "is_today": current_day == today,
             }
         )
+
+    return schedule
+
+def get_or_create_user_review_schedule(user):
+    from .models import UserReviewSchedule
+
+    schedule, _ = UserReviewSchedule.objects.get_or_create(user=user)
+    return schedule
+
+
+def get_user_review_slots(user):
+    from .models import ReviewSlot
+
+    schedule = get_or_create_user_review_schedule(user)
+
+    return list(
+        ReviewSlot.objects.filter(schedule=schedule)
+        .order_by("position", "time")
+        .values_list("time", flat=True)
+    )
+
+def ensure_default_review_slots(user):
+    from .models import ReviewSlot
+
+    schedule = get_or_create_user_review_schedule(user)
+    existing = ReviewSlot.objects.filter(schedule=schedule).count()
+
+    if existing == 0:
+        defaults = [
+            (1, dt_time(9, 0)),
+            (2, dt_time(14, 0)),
+            (3, dt_time(20, 0)),
+        ]
+        for position, slot_time in defaults:
+            ReviewSlot.objects.create(
+                schedule=schedule,
+                position=position,
+                time=slot_time,
+            )
 
     return schedule

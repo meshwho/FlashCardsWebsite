@@ -6,7 +6,8 @@ from fsrs import Card as FSRSCard
 from fsrs import Rating, Scheduler
 
 from .models import Card, ReviewLog
-
+from .selectors import get_user_review_slots
+from .scheduling import snap_due_to_next_slot
 
 @dataclass(frozen=True)
 class ReviewOutcome:
@@ -60,6 +61,17 @@ class FSRSService:
         fsrs_card = self._build_fsrs_card(card)
 
         updated_fsrs_card, _fsrs_review_log = self.scheduler.review_card(fsrs_card, rating)
+
+        slot_times = get_user_review_slots(card.owner)
+
+        schedule = getattr(card.owner, "review_schedule", None)
+        tz_name = schedule.timezone if schedule else "Europe/Zaporozhye"
+
+        updated_fsrs_card.due = snap_due_to_next_slot(
+            updated_fsrs_card.due,
+            slot_times,
+            tz_name=tz_name,
+        )
 
         due_before = card.due
 
