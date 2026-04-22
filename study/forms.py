@@ -139,3 +139,25 @@ ReviewSlotFormSet = formset_factory(
     min_num=1,
     validate_min=True,
 )
+
+class SentencePracticeForm(forms.Form):
+    def __init__(self, *args, sentence_count=1, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        for i in range(sentence_count):
+            self.fields[f"sentence_{i+1}"] = forms.CharField(
+                label=f"Sentence {i+1}",
+                widget=forms.Textarea(
+                    attrs={
+                        "rows": 2,
+                        "placeholder": "Write a sentence with this word",
+                    }
+                ),
+            )
+
+class PracticeOptionsForm(forms.Form):
+    require_sentences_after_mistake = forms.BooleanField(
+        required=False,
+        initial=False,
+        label="Require sentence after mistake",
+    )

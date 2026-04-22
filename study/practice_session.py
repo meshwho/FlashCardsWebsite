@@ -3,7 +3,7 @@ from collections import Counter
 SESSION_KEY = "deck_practice_session"
 
 
-def start_deck_practice_session(request, deck, mode, card_ids):
+def start_deck_practice_session(request, deck, mode, card_ids, require_sentences_after_mistake=False):
     random.shuffle(card_ids)
 
     directions = []
@@ -22,8 +22,16 @@ def start_deck_practice_session(request, deck, mode, card_ids):
         "directions": directions,
         "current_index": 0,
         "summary": [],
+        "require_sentences_after_mistake": require_sentences_after_mistake,
     }
     request.session.modified = True
+
+
+def should_require_sentences_in_practice(request):
+    session = get_practice_session(request)
+    if not session:
+        return False
+    return bool(session.get("require_sentences_after_mistake", False))
 
 
 def get_practice_session(request):

@@ -56,6 +56,16 @@ from django.utils import timezone
 from .models import Card, Deck, ReviewLog, ReviewSlot
 from .article_logic import split_article_and_word, is_correct_article_choice
 from .deck_metrics import enrich_deck_with_memory_score, enrich_decks_with_memory_scores
+from .forms import PracticeOptionsForm, SentencePracticeForm
+from .sentence_logic import sentence_count_for_rating, should_require_sentences
+from .sentence_session import (
+    clear_pending_sentence_task,
+    get_pending_sentence_task,
+    set_pending_sentence_task,
+)
+from .practice_session import should_require_sentences_in_practice
+from .models import SentenceAttempt
+
 
 def signup_view(request):
     if request.user.is_authenticated:
@@ -370,6 +380,9 @@ def deck_practice_setup_view(request, deck_id):
 
     if request.method == "POST":
         mode = request.POST.get("mode")
+        require_sentences_after_mistake = bool(
+            request.POST.get("require_sentences_after_mistake")
+        )
 
         if mode not in {"flip", "typing", "articles"}:
             mode = "flip"
@@ -396,6 +409,7 @@ def deck_practice_setup_view(request, deck_id):
             deck,
             mode,
             [card.id for card in selected_cards],
+            require_sentences_after_mistake=require_sentences_after_mistake,
         )
 
         if mode == "flip":
@@ -415,6 +429,7 @@ def deck_practice_setup_view(request, deck_id):
             "card_count": len(cards),
             "has_article_cards": any(card.has_article for card in cards),
             "article_card_count": sum(1 for card in cards if card.has_article),
+            "practice_options_form": PracticeOptionsForm(),
         },
     )
 
@@ -760,3 +775,46 @@ def repeat_practice_view(request, deck_id, mode):
         return redirect("deck_practice_typing", deck_id=deck.id)
 
     return redirect("deck_practice_articles", deck_id=deck.id)
+
+
+@login_required
+def sentence_practice_view(request):
+    task = get_pending_sentence_task(request)
+
+    if not task:
+        return redirect("dashboard")
+
+    card = get_user_card_or_404(request.user, task["card_id"])
+    required_count = int(task["required_count"])
+
+    if request.method == "POST":
+        form = SentencePracticeForm(request.POST, sentence_count=required_count)
+        if form.is_valid():
+            for i in range(required_count):
+                sentence_text = form.cleaned_data[f"sentence_{i+1}"].strip()
+
+                SentenceAttempt.objects.create(
+                    card=card,
+                    user=request.user,
+                    source_mode=task["source_mode"],
+                    sentence=sentence_text,
+                )
+
+            return_name = task["return_url_name"]
+            return_kwargs = task.get("return_url_kwargs", {})
+
+            clear_pending_sentence_task(request)
+            return redirect(return_name, **return_kwargs)
+    else:
+        form = SentencePracticeForm(sentence_count=required_count)
+
+    return render(
+        request,
+        "study/sentence_practice.html",
+        {
+            "card": card,
+            "required_count": required_count,
+            "form": form,
+            "source_mode": task["source_mode"],
+        },
+    )

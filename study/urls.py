@@ -18,6 +18,7 @@ from .views import (
     profile_view,
     deck_practice_articles_view,
     repeat_practice_view,
+    sentence_practice_view,
 )
 
 urlpatterns = [
@@ -42,4 +43,6 @@ urlpatterns = [
         repeat_practice_view,
         name="deck_practice_repeat",
     ),
+
+    path("sentence-practice/", sentence_practice_view, name="sentence_practice"),
 ]

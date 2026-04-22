@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Sentence practice{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <h1>Sentence practice</h1>
+    <p class="subtitle">
+        Write {{ required_count }} sentence{{ required_count|pluralize }} with this word.
+    </p>
+</div>
+
+<div class="card fade-in-2" style="margin-bottom: 24px;">
+    <div class="face-label">Word</div>
+    <div class="card-text">{{ card.question }}</div>
+</div>
+
+<div class="card fade-in-2">
+    <form method="post">
+        {% csrf_token %}
+
+        {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                    {{ field.errors }}
+                {% endif %}
+            </div>
+        {% endfor %}
+
+        <div class="practice-done-actions">
+            <button type="submit" class="btn btn-primary">Continue</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

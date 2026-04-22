@@ -169,3 +169,35 @@ class ReviewSlot(models.Model):
 
     def __str__(self):
         return f"{self.schedule.user.username} - {self.time}"
+
+class SentenceAttempt(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    card = models.ForeignKey(
+        Card,
+        on_delete=models.CASCADE,
+        related_name="sentence_attempts",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="sentence_attempts",
+    )
+
+    source_mode = models.CharField(
+        max_length=32,
+        choices=[
+            ("fsrs", "FSRS"),
+            ("typing_practice", "Typing Practice"),
+            ("article_practice", "Article Practice"),
+        ],
+    )
+
+    sentence = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"SentenceAttempt({self.user_id}, {self.card_id}, {self.source_mode})"
