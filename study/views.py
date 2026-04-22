@@ -67,6 +67,17 @@ from .practice_session import should_require_sentences_in_practice
 from .models import SentenceAttempt
 
 
+def _get_posted_non_negative_int(request, key, default=0):
+    raw_value = request.POST.get(key, default)
+
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError):
+        return default
+
+    return max(value, 0)
+
+
 def signup_view(request):
     if request.user.is_authenticated:
         return redirect("dashboard")
@@ -277,8 +288,8 @@ def review_card_view(request):
     if request.method == "POST":
         action = request.POST.get("action")
         user_answer = request.POST.get("user_answer", "").strip()
-        hints_used = int(request.POST.get("hints_used", 0))
-        wrong_attempts_count = int(request.POST.get("wrong_attempts_count", 0))
+        hints_used = _get_posted_non_negative_int(request, "hints_used", 0)
+        wrong_attempts_count = _get_posted_non_negative_int(request, "wrong_attempts_count", 0)
 
         if action == "hint":
             hints_used = min(hints_used + 1, MAX_HINTS)
@@ -339,6 +350,34 @@ def review_card_view(request):
             rating_value = get_rating_from_result(hints_used, knows_answer=False)
             service = FSRSService()
             outcome = service.review_card(card, rating_value)
+
+            if should_require_sentences(
+                    had_wrong_attempt=bool(wrong_attempts_count > 0),
+                    had_hint=bool(hints_used > 0),
+                    had_dont_know=True,
+                    rating_value=rating_value,
+                    feature_enabled=True,
+            ):
+                required_count = sentence_count_for_rating(rating_value)
+
+                add_review_to_session(
+                    request,
+                    outcome.card,
+                    rating_value,
+                    user_answer=user_answer,
+                    hints_used=hints_used,
+                )
+
+                set_pending_sentence_task(
+                    request,
+                    card_id=outcome.card.id,
+                    source_mode="fsrs",
+                    rating_value=rating_value,
+                    required_count=required_count,
+                    return_url_name="review_card",
+                    return_url_kwargs={},
+                )
+                return redirect("sentence_practice")
 
             add_review_to_session(
                 request,
@@ -545,8 +584,8 @@ def deck_practice_typing_view(request, deck_id):
     if request.method == "POST":
         action = request.POST.get("action")
         user_answer = request.POST.get("user_answer", "").strip()
-        hints_used = int(request.POST.get("hints_used", 0))
-        wrong_attempts_count = int(request.POST.get("wrong_attempts_count", 0))
+        hints_used = _get_posted_non_negative_int(request, "hints_used", 0)
+        wrong_attempts_count = _get_posted_non_negative_int(request, "wrong_attempts_count", 0)
 
         if action == "hint":
             hints_used = min(hints_used + 1, MAX_HINTS)
@@ -633,6 +672,41 @@ def deck_practice_typing_view(request, deck_id):
                 hints_used,
                 dont_know=True,
             )
+
+            if should_require_sentences(
+                    had_wrong_attempt=bool(wrong_attempts_count > 0),
+                    had_hint=bool(hints_used > 0),
+                    had_dont_know=True,
+                    rating_value=result["rating_value"],
+                    feature_enabled=should_require_sentences_in_practice(request),
+            ):
+                required_count = sentence_count_for_rating(result["rating_value"])
+
+                set_pending_sentence_task(
+                    request,
+                    card_id=card.id,
+                    source_mode="typing_practice",
+                    rating_value=result["rating_value"],
+                    required_count=required_count,
+                    return_url_name="deck_practice_typing",
+                    return_url_kwargs={"deck_id": deck.id},
+                )
+
+                add_practice_summary_item(
+                    request,
+                    {
+                        "question": qa["prompt"],
+                        "answer": qa["expected"],
+                        "user_answer": user_answer,
+                        "hints_used": hints_used,
+                        "rating_label": result["rating_label"],
+                        "direction_label": qa["direction_label"],
+                        "mode": "typing",
+                    },
+                )
+
+                advance_practice_session(request)
+                return redirect("sentence_practice")
 
             add_practice_summary_item(
                 request,
@@ -781,7 +855,7 @@ def deck_practice_articles_view(request, deck_id):
     feedback = ""
 
     if request.method == "POST":
-        wrong_attempts_count = int(request.POST.get("wrong_attempts_count", 0))
+        wrong_attempts_count = _get_posted_non_negative_int(request, "wrong_attempts_count", 0)
         chosen_article = request.POST.get("chosen_article", "").strip().lower()
 
         is_correct = is_correct_article_choice(card.question, chosen_article)
@@ -827,6 +901,27 @@ def deck_practice_articles_view(request, deck_id):
                 "mode": "articles",
             },
         )
+
+        if should_require_sentences(
+                had_wrong_attempt=bool(wrong_attempts_count > 0),
+                had_hint=False,
+                rating_value=rating_value,
+                feature_enabled=should_require_sentences_in_practice(request),
+        ):
+            required_count = sentence_count_for_rating(rating_value)
+
+            set_pending_sentence_task(
+                request,
+                card_id=card.id,
+                source_mode="article_practice",
+                rating_value=rating_value,
+                required_count=required_count,
+                return_url_name="deck_practice_articles",
+                return_url_kwargs={"deck_id": deck.id},
+            )
+
+            advance_practice_session(request)
+            return redirect("sentence_practice")
 
         advance_practice_session(request)
 
