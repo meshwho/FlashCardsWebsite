@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <h1>Profile</h1>
+    <p class="subtitle">Your learning overview, activity, and study setup.</p>
+</div>
+
+<div class="card fade-in" style="margin-bottom: 24px;">
+    <div class="profile-hero">
+        <div>
+            <h2 style="margin-bottom: 6px;">{{ request.user.username }}</h2>
+            <p>{{ request.user.email|default:"No email added" }}</p>
+        </div>
+        <div class="profile-hero-badges">
+            <span class="badge badge-accent">{{ total_decks }} deck{{ total_decks|pluralize }}</span>
+            <span class="badge badge-green">{{ total_cards }} card{{ total_cards|pluralize }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="stats-row fade-in-2">
+    <div class="stat-card">
+        <div class="stat-label">Due now</div>
+        <div class="stat-value accent">{{ due_now }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Reviews today</div>
+        <div class="stat-value">{{ reviews_today }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Learning</div>
+        <div class="stat-value">{{ learning_count }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">In review</div>
+        <div class="stat-value">{{ review_count }}</div>
+    </div>
+</div>
+
+<div class="profile-grid">
+    <section class="card fade-in-2">
+        <div class="page-header" style="margin-bottom: 18px;">
+            <h2>Card states</h2>
+            <p class="subtitle">How your cards are distributed right now.</p>
+        </div>
+
+        <div class="profile-state-list">
+            <div class="profile-state-item">
+                <span class="badge badge-amber">Learning</span>
+                <strong>{{ learning_count }}</strong>
+            </div>
+            <div class="profile-state-item">
+                <span class="badge badge-green">Review</span>
+                <strong>{{ review_count }}</strong>
+            </div>
+            <div class="profile-state-item">
+                <span class="badge badge-red">Relearning</span>
+                <strong>{{ relearning_count }}</strong>
+            </div>
+        </div>
+    </section>
+
+    <section class="card fade-in-2">
+        <div class="page-header" style="margin-bottom: 18px;">
+            <h2>Review schedule</h2>
+            <p class="subtitle">Your current study slots.</p>
+        </div>
+
+        {% if schedule and schedule.is_active %}
+            <div class="profile-schedule-meta">
+                <span class="badge badge-muted">{{ schedule.timezone }}</span>
+                <span class="badge badge-green">Active</span>
+            </div>
+
+            <div class="profile-slot-list">
+                {% for slot in schedule_slots %}
+                    <div class="profile-slot-item">
+                        <span>Slot {{ slot.position }}</span>
+                        <strong>{{ slot.time|time:"H:i" }}</strong>
+                    </div>
+                {% empty %}
+                    <p>No review slots configured yet.</p>
+                {% endfor %}
+            </div>
+        {% elif schedule %}
+            <div class="profile-schedule-meta">
+                <span class="badge badge-muted">{{ schedule.timezone }}</span>
+                <span class="badge badge-red">Inactive</span>
+            </div>
+            <p>Schedule rounding is currently disabled.</p>
+        {% else %}
+            <p>No schedule configured yet.</p>
+        {% endif %}
+    </section>
+</div>
+
+<div class="profile-grid" style="margin-top: 24px;">
+    <section class="card fade-in-3">
+        <div class="page-header" style="margin-bottom: 18px;">
+            <h2>Top decks</h2>
+            <p class="subtitle">Your biggest decks.</p>
+        </div>
+
+        {% if top_decks %}
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Deck</th>
+                            <th>Cards</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for deck in top_decks %}
+                            <tr>
+                                <td>{{ deck.title }}</td>
+                                <td>{{ deck.card_count }}</td>
+                                <td>
+                                    <a href="{% url 'deck_detail' deck.id %}" class="btn btn-ghost btn-sm">Open</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <span class="empty-icon">◌</span>
+                <p>No decks yet.</p>
+                <a href="{% url 'deck_create' %}" class="btn btn-primary">Create deck</a>
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="card fade-in-3">
+        <div class="page-header" style="margin-bottom: 18px;">
+            <h2>Recent activity</h2>
+            <p class="subtitle">Your last reviews.</p>
+        </div>
+
+        {% if recent_reviews %}
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Card</th>
+                            <th>Deck</th>
+                            <th>Rating</th>
+                            <th>Reviewed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in recent_reviews %}
+                            <tr>
+                                <td>{{ item.card.question|truncatechars:60 }}</td>
+                                <td>{{ item.card.deck.title }}</td>
+                                <td>
+                                    {% if item.rating == 1 %}
+                                        <span class="badge badge-red">Again</span>
+                                    {% elif item.rating == 2 %}
+                                        <span class="badge badge-amber">Hard</span>
+                                    {% elif item.rating == 3 %}
+                                        <span class="badge badge-green">Good</span>
+                                    {% elif item.rating == 4 %}
+                                        <span class="badge badge-accent">Easy</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.reviewed_at|date:"M d, H:i" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <span class="empty-icon">◌</span>
+                <p>No reviews yet.</p>
+                <a href="{% url 'study_today' %}" class="btn btn-primary">Start studying</a>
+            </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

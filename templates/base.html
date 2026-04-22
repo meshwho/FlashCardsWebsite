@@ -52,7 +52,7 @@
                     <a href="{% url 'deck_list' %}">Decks</a>
                     <a href="{% url 'deck_create' %}">New deck</a>
                     <a href="{% url 'study_today' %}">Study</a>
-                    <a href="#" class="nav-profile-link">Profile</a>
+                    <a href="{% url 'profile' %}" class="nav-profile-link">Profile</a>
 
                     <div class="mobile-menu-footer">
                         <form method="post" action="{% url 'logout' %}">
@@ -67,7 +67,7 @@
                     <a href="{% url 'deck_list' %}">Decks</a>
                     <a href="{% url 'deck_create' %}">New deck</a>
                     <a href="{% url 'study_today' %}">Study</a>
-                    <a href="#" >Profile</a>
+                    <a href="{% url 'profile' %}">Profile</a>
                 </nav>
             {% endif %}
         </div>

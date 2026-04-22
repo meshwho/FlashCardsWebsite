@@ -15,6 +15,7 @@ from .views import (
     deck_practice_flip_view,
     deck_practice_typing_view,
     deck_practice_done_view,
+    profile_view,
 )
 
 urlpatterns = [
@@ -32,4 +33,5 @@ urlpatterns = [
     path("decks/<uuid:deck_id>/practice/flip/", deck_practice_flip_view, name="deck_practice_flip"),
     path("decks/<uuid:deck_id>/practice/typing/", deck_practice_typing_view, name="deck_practice_typing"),
     path("decks/<uuid:deck_id>/practice/done/", deck_practice_done_view, name="deck_practice_done"),
+    path("profile/", profile_view, name="profile"),
 ]

@@ -51,6 +51,10 @@ from .practice_session import (
 )
 from .selectors import get_user_card_or_404, get_user_deck_cards
 from .practice_session import go_back_practice_session
+from django.db.models import Count
+from django.utils import timezone
+from .models import Card, Deck, ReviewLog, ReviewSlot
+
 
 def signup_view(request):
     if request.user.is_authenticated:
@@ -572,5 +576,67 @@ def deck_practice_done_view(request, deck_id):
         {
             "deck": deck,
             "summary": summary,
+        },
+    )
+
+@login_required
+def profile_view(request):
+    user = request.user
+
+    total_decks = user.decks.count()
+    total_cards = Card.objects.filter(deck__owner=user).count()
+    due_now = get_due_cards_for_user(user).count()
+
+    today = timezone.localdate()
+    reviews_today = ReviewLog.objects.filter(
+        card__deck__owner=user,
+        reviewed_at__date=today,
+    ).count()
+
+    learning_count = Card.objects.filter(
+        deck__owner=user,
+        state="Learning",
+    ).count()
+
+    review_count = Card.objects.filter(
+        deck__owner=user,
+        state="Review",
+    ).count()
+
+    relearning_count = Card.objects.filter(
+        deck__owner=user,
+        state="Relearning",
+    ).count()
+
+    recent_reviews = ReviewLog.objects.filter(
+        card__deck__owner=user,
+    ).select_related("card", "card__deck").order_by("-reviewed_at")[:10]
+
+    top_decks = (
+        Deck.objects.filter(owner=user)
+        .annotate(card_count=Count("cards"))
+        .order_by("-card_count", "title")[:5]
+    )
+
+    schedule = getattr(user, "review_schedule", None)
+    schedule_slots = []
+    if schedule:
+        schedule_slots = schedule.slots.all().order_by("position", "time")
+
+    return render(
+        request,
+        "study/profile.html",
+        {
+            "total_decks": total_decks,
+            "total_cards": total_cards,
+            "due_now": due_now,
+            "reviews_today": reviews_today,
+            "learning_count": learning_count,
+            "review_count": review_count,
+            "relearning_count": relearning_count,
+            "recent_reviews": recent_reviews,
+            "top_decks": top_decks,
+            "schedule": schedule,
+            "schedule_slots": schedule_slots,
         },
     )
