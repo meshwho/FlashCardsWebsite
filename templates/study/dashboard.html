@@ -2,6 +2,14 @@
 {% block title %}Dashboard — FlashCards{% endblock %}
 
 {% block content %}
+{% if messages %}
+    {% for message in messages %}
+        <div class="form-error-banner fade-in">
+            <p>{{ message }}</p>
+        </div>
+    {% endfor %}
+{% endif %}
+
 <div class="fade-in">
     <div class="page-header">
         <h1>Hello, {{ request.user.username }}</h1>
@@ -26,7 +34,7 @@
     {% else %}
     <div class="cta-bar fade-in-2">
         <div>
-            <p style="font-weight:600;color:var(--green);margin-bottom:2px;">All caught up! 🎉</p>
+            <p class="cta-title-green">All caught up! 🎉</p>
             <p class="cta-desc">No cards due right now. Come back later or add more cards.</p>
         </div>
         <a href="{% url 'deck_list' %}" class="btn btn-secondary">View decks</a>
@@ -47,13 +55,6 @@
         </div>
     </div>
 </div>
-{% if messages %}
-    {% for message in messages %}
-        <div class="form-error-banner fade-in">
-            <p>{{ message }}</p>
-        </div>
-    {% endfor %}
-{% endif %}
 
 <hr class="divider">
 
@@ -88,9 +89,7 @@
             {{ schedule_form.is_active }}
         </div>
 
-        <div class="page-header" style="margin-bottom: 16px;">
-            <h3>Review times</h3>
-        </div>
+        <h3 style="margin-bottom: 14px;">Review times</h3>
 
         <div id="slots-container" class="schedule-slots-list">
             {% for form in slot_formset %}
@@ -136,9 +135,7 @@
         function defaultSlotValue(index, total) {
             const defaults = ["09:00", "14:00", "20:00", "08:00", "12:00", "16:00", "21:00"];
             if (defaults[index]) return defaults[index];
-
-            const startHour = 8;
-            const endHour = 22;
+            const startHour = 8, endHour = 22;
             const step = Math.max(1, Math.floor((endHour - startHour) / Math.max(total - 1, 1)));
             const hour = Math.min(endHour, startHour + index * step);
             return String(hour).padStart(2, "0") + ":00";
@@ -147,40 +144,28 @@
         function renderSlots(count) {
             const currentValues = getCurrentSlotValues();
             slotsContainer.innerHTML = "";
-
             for (let i = 0; i < count; i++) {
                 const value = currentValues[i] || defaultSlotValue(i, count);
-
                 const slotCard = document.createElement("div");
                 slotCard.className = "card schedule-slot-card";
                 slotCard.innerHTML = `
                     <div class="schedule-slot-row">
-                        <div>
-                            <label>Slot ${i + 1}</label>
-                        </div>
+                        <div><label>Slot ${i + 1}</label></div>
                         <div>
                             <div class="time-input-wrap">
                                 <span class="time-input-icon" aria-hidden="true">🕒</span>
-                                <input
-                                    type="time"
-                                    name="slot_${i}_time"
-                                    value="${value}"
-                                    class="time-input"
-                                    required
-                                >
+                                <input type="time" name="slot_${i}_time" value="${value}" class="time-input" required>
                             </div>
                         </div>
                     </div>
                 `;
-
                 slotsContainer.appendChild(slotCard);
             }
         }
 
         if (reviewsPerDayInput) {
             reviewsPerDayInput.addEventListener("change", function () {
-                const count = parseInt(this.value, 10) || 1;
-                renderSlots(count);
+                renderSlots(parseInt(this.value, 10) || 1);
             });
         }
     })();
