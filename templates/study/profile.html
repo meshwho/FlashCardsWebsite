@@ -105,26 +105,26 @@
         </div>
 
         {% if top_decks %}
-            <div class="table-wrap">
+            <div class="table-wrap table-mobile-cards">
                 <table class="data-table">
                     <thead>
                         <tr>
                             <th>Deck</th>
                             <th>Cards</th>
                             <th>Memory</th>
-                            <th></th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for deck in top_decks %}
                             <tr>
-                                <td>{{ deck.title }}</td>
-                                <td>{{ deck.card_count }}</td>
-                                <td>
+                                <td data-label="Deck">{{ deck.title }}</td>
+                                <td data-label="Cards">{{ deck.card_count }}</td>
+                                <td data-label="Memory">
                                     <span class="badge {{ deck.memory_badge_class }}">{{ deck.memory_score }}/10</span>
                                 </td>
-                                <td>
-                                    <a href="{% url 'deck_detail' deck.id %}" class="btn btn-ghost btn-sm">Open</a>
+                                <td data-label="Action">
+                                    <a href="{% url 'deck_detail' deck.id %}" class="btn btn-secondary btn-sm">Open deck</a>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -136,54 +136,6 @@
                 <span class="empty-icon">◌</span>
                 <p>No decks yet.</p>
                 <a href="{% url 'deck_create' %}" class="btn btn-primary">Create deck</a>
-            </div>
-        {% endif %}
-    </section>
-
-    <section class="card fade-in-3">
-        <div class="page-header" style="margin-bottom: 18px;">
-            <h2>Recent activity</h2>
-            <p class="subtitle">Your last reviews.</p>
-        </div>
-
-        {% if recent_reviews %}
-            <div class="table-wrap">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Card</th>
-                            <th>Deck</th>
-                            <th>Rating</th>
-                            <th>Reviewed</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in recent_reviews %}
-                            <tr>
-                                <td>{{ item.card.question|truncatechars:60 }}</td>
-                                <td>{{ item.card.deck.title }}</td>
-                                <td>
-                                    {% if item.rating == 1 %}
-                                        <span class="badge badge-red">Again</span>
-                                    {% elif item.rating == 2 %}
-                                        <span class="badge badge-amber">Hard</span>
-                                    {% elif item.rating == 3 %}
-                                        <span class="badge badge-green">Good</span>
-                                    {% elif item.rating == 4 %}
-                                        <span class="badge badge-easy">Easy</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ item.reviewed_at|date:"M d, H:i" }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <div class="empty-state">
-                <span class="empty-icon">◌</span>
-                <p>No reviews yet.</p>
-                <a href="{% url 'study_today' %}" class="btn btn-primary">Start studying</a>
             </div>
         {% endif %}
     </section>

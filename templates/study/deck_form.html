@@ -2,27 +2,35 @@
 {% block title %}Create Deck — FlashCards{% endblock %}
 
 {% block content %}
-<div style="max-width:520px;" class="fade-in">
-    <div class="page-header">
+<section class="narrow-form-page fade-in">
+    <div class="form-intro form-intro-centered">
         <h1>Create a new deck</h1>
-        <p class="subtitle">Give your deck a name to get started</p>
+        <p class="subtitle">Give your deck a name to get started.</p>
     </div>
 
-    <div class="card">
-        <form method="post">
+    <div class="card form-card form-card-compact">
+        <form method="post" class="single-column-form">
             {% csrf_token %}
+
             {% for field in form %}
-            <div class="form-group">
-                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {% if field.errors %}<ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
-            </div>
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                        <ul class="errorlist">
+                            {% for e in field.errors %}
+                                <li>{{ e }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
             {% endfor %}
-            <div class="stack-actions" style="margin-top:8px;">
-                <button type="submit" class="btn btn-primary">Create deck</button>
-                <a href="{% url 'deck_list' %}" class="btn btn-ghost">Cancel</a>
+
+            <div class="form-actions-stack">
+                <button type="submit" class="btn btn-primary btn-full">Create deck</button>
+                <a href="{% url 'deck_list' %}" class="subtle-link-btn">Cancel</a>
             </div>
         </form>
     </div>
-</div>
+</section>
 {% endblock %}
