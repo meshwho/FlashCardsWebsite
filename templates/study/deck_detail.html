@@ -8,6 +8,10 @@
         <h1>{{ deck.title }}</h1>
         <p class="subtitle">{{ deck.cards.count }} card{{ deck.cards.count|pluralize }}</p>
     </div>
+    <div class="deck-memory-panel">
+        <p class="subtitle">Memory score:</p>
+        <strong class="deck-memory-panel__score">{{ deck.memory_score }}/10</strong>
+    </div>
 
     <div class="deck-detail-actions">
         <a href="{% url 'deck_edit' deck.id %}" class="btn btn-secondary">Edit deck</a>

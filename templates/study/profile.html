@@ -111,6 +111,7 @@
                         <tr>
                             <th>Deck</th>
                             <th>Cards</th>
+                            <th>Memory</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -119,6 +120,9 @@
                             <tr>
                                 <td>{{ deck.title }}</td>
                                 <td>{{ deck.card_count }}</td>
+                                <td>
+                                    <span class="badge {{ deck.memory_badge_class }}">{{ deck.memory_score }}/10</span>
+                                </td>
                                 <td>
                                     <a href="{% url 'deck_detail' deck.id %}" class="btn btn-ghost btn-sm">Open</a>
                                 </td>
@@ -166,7 +170,7 @@
                                     {% elif item.rating == 3 %}
                                         <span class="badge badge-green">Good</span>
                                     {% elif item.rating == 4 %}
-                                        <span class="badge badge-accent">Easy</span>
+                                        <span class="badge badge-easy">Easy</span>
                                     {% endif %}
                                 </td>
                                 <td>{{ item.reviewed_at|date:"M d, H:i" }}</td>
@@ -183,5 +187,57 @@
             </div>
         {% endif %}
     </section>
+</div>
+<div class="card fade-in-3" style="margin-top: 24px;">
+    <div class="page-header" style="margin-bottom: 18px;">
+        <h2>How to read your stats</h2>
+        <p class="subtitle">A quick guide to the labels and card states you see in your profile.</p>
+    </div>
+
+    <div class="profile-help-grid">
+        <div class="profile-help-section">
+            <h3>Review ratings</h3>
+            <div class="profile-help-list">
+                <div class="profile-help-item">
+                    <span class="badge badge-red">Again</span>
+                    <p>You did not remember the card. It should come back soon.</p>
+                </div>
+                <div class="profile-help-item">
+                    <span class="badge badge-amber">Hard</span>
+                    <p>You remembered it with difficulty. The card likely needs more practice.</p>
+                </div>
+                <div class="profile-help-item">
+                    <span class="badge badge-green">Good</span>
+                    <p>You remembered it correctly. This is a solid successful review.</p>
+                </div>
+                <div class="profile-help-item">
+                    <span class="badge badge-easy">Easy</span>
+                    <p>You remembered it very easily. The interval can grow more confidently.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="profile-help-section">
+            <h3>Card states</h3>
+            <div class="profile-help-list">
+                <div class="profile-help-item">
+                    <span class="badge badge-amber">Learning</span>
+                    <p>The card is still new or not yet stable.</p>
+                </div>
+                <div class="profile-help-item">
+                    <span class="badge badge-green">Review</span>
+                    <p>The card is in regular long-term spaced repetition.</p>
+                </div>
+                <div class="profile-help-item">
+                    <span class="badge badge-red">Relearning</span>
+                    <p>The card was forgotten and is being learned again.</p>
+                </div>
+                <div class="profile-help-item">
+                    <span class="badge badge-muted">Due now</span>
+                    <p>Cards that are ready to be reviewed at this moment.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

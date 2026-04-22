@@ -55,6 +55,7 @@ from django.db.models import Count
 from django.utils import timezone
 from .models import Card, Deck, ReviewLog, ReviewSlot
 from .article_logic import split_article_and_word, is_correct_article_choice
+from .deck_metrics import enrich_deck_with_memory_score, enrich_decks_with_memory_scores
 
 def signup_view(request):
     if request.user.is_authenticated:
@@ -158,8 +159,16 @@ def dashboard_view(request):
 
 @login_required
 def deck_list_view(request):
-    decks = get_user_decks(request.user)
-    return render(request, "study/deck_list.html", {"decks": decks})
+    decks = list(get_user_decks(request.user))
+    decks = enrich_decks_with_memory_scores(decks)
+
+    return render(
+        request,
+        "study/deck_list.html",
+        {
+            "decks": decks,
+        },
+    )
 
 
 @login_required
@@ -180,6 +189,7 @@ def deck_create_view(request):
 @login_required
 def deck_detail_view(request, deck_id):
     deck = get_user_deck_or_404(request.user, deck_id)
+    deck = enrich_deck_with_memory_score(deck)
 
     return render(
         request,
@@ -637,11 +647,13 @@ def profile_view(request):
         card__deck__owner=user,
     ).select_related("card", "card__deck").order_by("-reviewed_at")[:10]
 
-    top_decks = (
+    top_decks = list(
         Deck.objects.filter(owner=user)
         .annotate(card_count=Count("cards"))
         .order_by("-card_count", "title")[:5]
     )
+
+    top_decks = enrich_decks_with_memory_scores(top_decks)
 
     schedule = getattr(user, "review_schedule", None)
     schedule_slots = []

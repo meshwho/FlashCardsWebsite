@@ -1221,3 +1221,80 @@ textarea { resize: vertical; min-height: 90px; }
     }
 }
 
+
+.deck-memory-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.deck-memory-score {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-2);
+}
+
+.deck-memory-panel {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    margin-bottom: 10px;
+}
+
+.deck-memory-panel__score {
+    font-size: 1rem;
+    color: var(--text);
+}
+
+.badge-easy {
+    background: #EAF4FF;
+    color: #2F6EA6;
+}
+
+.profile-help-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+.profile-help-section {
+    min-width: 0;
+}
+
+.profile-help-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.profile-help-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+}
+
+.profile-help-item .badge {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.profile-help-item p {
+    margin: 0;
+    color: var(--text-2);
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+    .profile-help-grid {
+        grid-template-columns: 1fr;
+    }
+}
+

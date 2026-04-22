@@ -9,6 +9,8 @@ from .models import Card, ReviewLog
 from .selectors import get_user_review_slots
 from .scheduling import snap_due_to_next_slot
 
+FSRS_DESIRED_RETENTION = 0.96
+
 @dataclass(frozen=True)
 class ReviewOutcome:
     card: Card

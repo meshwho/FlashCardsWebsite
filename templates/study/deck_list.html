@@ -18,6 +18,14 @@
     {% for deck in decks %}
     <a href="{% url 'deck_detail' deck.id %}" class="deck-card">
         <div class="deck-title">{{ deck.title }}</div>
+        <div class="deck-memory-row">
+            <p class="subtitle">
+                Memory score:
+            </p>
+            <span class="deck-memory-score">
+                {{ deck.memory_score }}/10
+            </span>
+        </div>
         <div class="deck-footer">
             <span class="badge badge-muted">{{ deck.cards.count }} card{{ deck.cards.count|pluralize }}</span>
             <span class="deck-edit-link" onclick="event.preventDefault(); window.location='{% url 'deck_edit' deck.id %}'">Edit ›</span>
