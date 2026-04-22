@@ -1,5 +1,4 @@
 import random
-from collections import Counter
 
 
 SESSION_KEY = "deck_practice_session"
@@ -170,8 +169,8 @@ def get_practice_summary(request):
         "hard_count": sum(1 for item in items if item.get("rating_label") == "Hard"),
         "good_count": sum(1 for item in items if item.get("rating_label") == "Good"),
         "easy_count": sum(1 for item in items if item.get("rating_label") == "Easy"),
-        "correct_count": sum(1 for item in items if item.get("is_correct")),
-        "wrong_count": sum(1 for item in items if not item.get("is_correct")),
+        "correct_count": sum(1 for item in items if item.get("is_correct") is True),
+        "wrong_count": sum(1 for item in items if item.get("is_correct") is False),
         "der_count": sum(1 for item in items if item.get("chosen_article") == "der"),
         "die_count": sum(1 for item in items if item.get("chosen_article") == "die"),
         "das_count": sum(1 for item in items if item.get("chosen_article") == "das"),

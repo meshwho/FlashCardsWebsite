@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from .models import Card, Deck
 from .forms import ReviewScheduleForm
+from .practice_session import get_practice_summary
 from .sentence_logic import sentence_count_for_rating, should_require_sentences
 
 
@@ -242,6 +243,38 @@ class SentenceFlowViewTests(TestCase):
         self.assertRedirects(response, reverse("dashboard"))
         self.assertNotIn("pending_sentence_task", self.client.session)
 
+    def test_sentence_practice_rejects_missing_card_id(self):
+        session = self.client.session
+        session["pending_sentence_task"] = {
+            "source_mode": "typing_practice",
+            "rating_value": 1,
+            "required_count": 2,
+            "return_url_name": "deck_practice_typing",
+            "return_url_kwargs": {"deck_id": str(self.deck.id)},
+        }
+        session.save()
+
+        response = self.client.get(reverse("sentence_practice"))
+        self.assertRedirects(response, reverse("dashboard"))
+        self.assertNotIn("pending_sentence_task", self.client.session)
+
+    def test_sentence_practice_rejects_unexpected_return_kwargs(self):
+        card = self._create_card(question="Wasser", answer="water")
+        session = self.client.session
+        session["pending_sentence_task"] = {
+            "card_id": str(card.id),
+            "source_mode": "typing_practice",
+            "rating_value": 1,
+            "required_count": 2,
+            "return_url_name": "deck_practice_typing",
+            "return_url_kwargs": {"deck_id": str(self.deck.id), "extra": "1"},
+        }
+        session.save()
+
+        response = self.client.get(reverse("sentence_practice"))
+        self.assertRedirects(response, reverse("dashboard"))
+        self.assertNotIn("pending_sentence_task", self.client.session)
+
 
 class DashboardValidationTests(TestCase):
     def setUp(self):
@@ -266,6 +299,49 @@ class DashboardValidationTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("dashboard"))
+
+
+class PracticeOptionsSecurityTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="practice-user", password="pass123456")
+        self.client.force_login(self.user)
+        self.deck = Deck.objects.create(owner=self.user, title="Practice deck")
+        self.card = Card.objects.create(
+            deck=self.deck,
+            question="Wasser",
+            answer="water",
+            due=timezone.now(),
+        )
+
+    def test_setup_treats_string_false_as_false_for_checkbox(self):
+        response = self.client.post(
+            reverse("deck_practice_setup", kwargs={"deck_id": self.deck.id}),
+            {
+                "mode": "typing",
+                "require_sentences_after_mistake": "false",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        session = self.client.session["deck_practice_session"]
+        self.assertFalse(session["require_sentences_after_mistake"])
+
+
+class PracticeSessionSummaryTests(TestCase):
+    def test_typing_summary_counts_only_explicit_boolean_results(self):
+        request = SimpleNamespace(session={})
+        request.session["deck_practice_session"] = {
+            "mode": "typing",
+            "summary": [
+                {"rating_label": "Easy", "is_correct": True},
+                {"rating_label": "Again", "is_correct": False},
+                {"rating_label": "Good"},
+            ],
+        }
+
+        summary = get_practice_summary(request)
+        self.assertEqual(summary["correct_count"], 1)
+        self.assertEqual(summary["wrong_count"], 1)
 
 
 class ReviewScheduleFormTests(TestCase):
