@@ -111,7 +111,12 @@ def dashboard_view(request):
             slots_count=len(existing_slots) or 3,
         )
 
-        reviews_per_day = int(request.POST.get("reviews_per_day", len(existing_slots) or 3))
+        reviews_per_day = _get_posted_non_negative_int(
+            request,
+            "reviews_per_day",
+            len(existing_slots) or 3,
+        )
+        reviews_per_day = max(1, min(reviews_per_day, 10))
         posted_slot_data = []
 
         for i in range(reviews_per_day):
@@ -983,8 +988,34 @@ def sentence_practice_view(request):
     if not task:
         return redirect("dashboard")
 
+    allowed_source_modes = {"fsrs", "typing_practice", "article_practice"}
+    allowed_return_urls = {
+        "review_card",
+        "deck_practice_typing",
+        "deck_practice_articles",
+    }
+
+    try:
+        required_count = int(task["required_count"])
+    except (KeyError, TypeError, ValueError):
+        clear_pending_sentence_task(request)
+        return redirect("dashboard")
+
+    if required_count < 1 or required_count > 3:
+        clear_pending_sentence_task(request)
+        return redirect("dashboard")
+
+    source_mode = task.get("source_mode")
+    if source_mode not in allowed_source_modes:
+        clear_pending_sentence_task(request)
+        return redirect("dashboard")
+
+    return_name = task.get("return_url_name")
+    if return_name not in allowed_return_urls:
+        clear_pending_sentence_task(request)
+        return redirect("dashboard")
+
     card = get_user_card_or_404(request.user, task["card_id"])
-    required_count = int(task["required_count"])
 
     if request.method == "POST":
         form = SentencePracticeForm(request.POST, sentence_count=required_count)
@@ -996,11 +1027,10 @@ def sentence_practice_view(request):
                 SentenceAttempt.objects.create(
                     card=card,
                     user=request.user,
-                    source_mode=task["source_mode"],
+                    source_mode=source_mode,
                     sentence=sentence_text,
                 )
 
-            return_name = task["return_url_name"]
             return_kwargs = task.get("return_url_kwargs", {})
 
             clear_pending_sentence_task(request)
@@ -1015,6 +1045,6 @@ def sentence_practice_view(request):
             "card": card,
             "required_count": required_count,
             "form": form,
-            "source_mode": task["source_mode"],
+            "source_mode": source_mode,
         },
     )

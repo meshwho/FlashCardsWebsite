@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .models import Card, Deck
+from .forms import ReviewScheduleForm
 from .sentence_logic import sentence_count_for_rating, should_require_sentences
 
 
@@ -206,3 +207,76 @@ class SentenceFlowViewTests(TestCase):
         pending = self.client.session.get("pending_sentence_task")
         self.assertEqual(pending["source_mode"], "article_practice")
         self.assertEqual(pending["required_count"], 2)
+
+    def test_sentence_practice_rejects_invalid_required_count_in_session(self):
+        card = self._create_card(question="Wasser", answer="water")
+        session = self.client.session
+        session["pending_sentence_task"] = {
+            "card_id": str(card.id),
+            "source_mode": "typing_practice",
+            "rating_value": 1,
+            "required_count": "not-a-number",
+            "return_url_name": "deck_practice_typing",
+            "return_url_kwargs": {"deck_id": str(self.deck.id)},
+        }
+        session.save()
+
+        response = self.client.get(reverse("sentence_practice"))
+        self.assertRedirects(response, reverse("dashboard"))
+        self.assertNotIn("pending_sentence_task", self.client.session)
+
+    def test_sentence_practice_rejects_unapproved_return_target(self):
+        card = self._create_card(question="Wasser", answer="water")
+        session = self.client.session
+        session["pending_sentence_task"] = {
+            "card_id": str(card.id),
+            "source_mode": "typing_practice",
+            "rating_value": 1,
+            "required_count": 2,
+            "return_url_name": "https://evil.example/",
+            "return_url_kwargs": {},
+        }
+        session.save()
+
+        response = self.client.get(reverse("sentence_practice"))
+        self.assertRedirects(response, reverse("dashboard"))
+        self.assertNotIn("pending_sentence_task", self.client.session)
+
+
+class DashboardValidationTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="scheduler", password="pass123456")
+        self.client.force_login(self.user)
+
+    def test_dashboard_ignores_non_numeric_reviews_per_day(self):
+        response = self.client.post(
+            reverse("dashboard"),
+            {
+                "timezone": "Europe/Berlin",
+                "is_active": "on",
+                "reviews_per_day": "abc",
+                "slot_0_time": "09:00",
+                "form-TOTAL_FORMS": "1",
+                "form-INITIAL_FORMS": "0",
+                "form-MIN_NUM_FORMS": "1",
+                "form-MAX_NUM_FORMS": "1000",
+                "form-0-time": "09:00",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("dashboard"))
+
+
+class ReviewScheduleFormTests(TestCase):
+    def test_timezone_must_be_valid_iana_name(self):
+        form = ReviewScheduleForm(
+            data={
+                "timezone": "Not/A_Timezone",
+                "is_active": True,
+                "reviews_per_day": 3,
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("timezone", form.errors)
