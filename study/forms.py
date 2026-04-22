@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.forms import BaseInlineFormSet, inlineformset_factory
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from .models import Card, Deck
 from datetime import time
 from django.forms import formset_factory
@@ -124,6 +125,16 @@ class ReviewScheduleForm(forms.ModelForm):
         slots_count = kwargs.pop("slots_count", 3)
         super().__init__(*args, **kwargs)
         self.fields["reviews_per_day"].initial = slots_count
+
+    def clean_timezone(self):
+        tz_name = (self.cleaned_data.get("timezone") or "").strip()
+
+        try:
+            ZoneInfo(tz_name)
+        except ZoneInfoNotFoundError:
+            raise forms.ValidationError("Enter a valid IANA timezone, e.g. Europe/Berlin.")
+
+        return tz_name
 
 
 class ReviewSlotForm(forms.Form):
