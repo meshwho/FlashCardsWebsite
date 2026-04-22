@@ -1,5 +1,5 @@
 import random
-
+from collections import Counter
 SESSION_KEY = "deck_practice_session"
 
 
@@ -104,21 +104,32 @@ def get_practice_summary(request):
             "hard_count": 0,
             "good_count": 0,
             "easy_count": 0,
+            "correct_count": 0,
+            "wrong_count": 0,
+            "der_count": 0,
+            "die_count": 0,
+            "das_count": 0,
             "items": [],
         }
 
     items = session.get("summary", [])
+    rating_counter = Counter(item.get("rating_label") for item in items)
+    article_counter = Counter(item.get("chosen_article") for item in items)
 
     return {
         "mode": session.get("mode"),
         "total": len(items),
-        "again_count": sum(1 for item in items if item.get("rating_label") == "Again"),
-        "hard_count": sum(1 for item in items if item.get("rating_label") == "Hard"),
-        "good_count": sum(1 for item in items if item.get("rating_label") == "Good"),
-        "easy_count": sum(1 for item in items if item.get("rating_label") == "Easy"),
+        "again_count": rating_counter.get("Again", 0),
+        "hard_count": rating_counter.get("Hard", 0),
+        "good_count": rating_counter.get("Good", 0),
+        "easy_count": rating_counter.get("Easy", 0),
+        "correct_count": sum(1 for item in items if item.get("is_correct")),
+        "wrong_count": sum(1 for item in items if not item.get("is_correct")),
+        "der_count": article_counter.get("der", 0),
+        "die_count": article_counter.get("die", 0),
+        "das_count": article_counter.get("das", 0),
         "items": items,
     }
-
 def go_back_practice_session(request):
     session = get_practice_session(request)
     if not session:
@@ -134,3 +145,9 @@ def go_back_practice_session(request):
     session["summary"] = summary
     request.session[SESSION_KEY] = session
     request.session.modified = True
+
+def get_last_practice_mode(request):
+    session = get_practice_session(request)
+    if not session:
+        return None
+    return session.get("mode")

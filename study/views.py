@@ -54,7 +54,7 @@ from .practice_session import go_back_practice_session
 from django.db.models import Count
 from django.utils import timezone
 from .models import Card, Deck, ReviewLog, ReviewSlot
-
+from .article_logic import split_article_and_word, is_correct_article_choice
 
 def signup_view(request):
     if request.user.is_authenticated:
@@ -361,19 +361,40 @@ def deck_practice_setup_view(request, deck_id):
     if request.method == "POST":
         mode = request.POST.get("mode")
 
-        if mode not in {"flip", "typing"}:
+        if mode not in {"flip", "typing", "articles"}:
             mode = "flip"
+
+        selected_cards = cards
+
+        if mode == "articles":
+            selected_cards = [card for card in cards if card.has_article]
+
+            if not selected_cards:
+                return render(
+                    request,
+                    "study/deck_practice_setup.html",
+                    {
+                        "deck": deck,
+                        "has_cards": True,
+                        "card_count": len(cards),
+                        "has_article_cards": False,
+                    },
+                )
 
         start_deck_practice_session(
             request,
             deck,
             mode,
-            [card.id for card in cards],
+            [card.id for card in selected_cards],
         )
 
         if mode == "flip":
             return redirect("deck_practice_flip", deck_id=deck.id)
-        return redirect("deck_practice_typing", deck_id=deck.id)
+
+        if mode == "typing":
+            return redirect("deck_practice_typing", deck_id=deck.id)
+
+        return redirect("deck_practice_articles", deck_id=deck.id)
 
     return render(
         request,
@@ -382,6 +403,8 @@ def deck_practice_setup_view(request, deck_id):
             "deck": deck,
             "has_cards": True,
             "card_count": len(cards),
+            "has_article_cards": any(card.has_article for card in cards),
+            "article_card_count": sum(1 for card in cards if card.has_article),
         },
     )
 
@@ -568,6 +591,7 @@ def deck_practice_typing_view(request, deck_id):
 def deck_practice_done_view(request, deck_id):
     deck = get_user_deck_or_404(request.user, deck_id)
     summary = get_practice_summary(request)
+    practice_mode = summary.get("mode")
     clear_practice_session(request)
 
     return render(
@@ -576,6 +600,7 @@ def deck_practice_done_view(request, deck_id):
         {
             "deck": deck,
             "summary": summary,
+            "practice_mode": practice_mode,
         },
     )
 
@@ -640,3 +665,86 @@ def profile_view(request):
             "schedule_slots": schedule_slots,
         },
     )
+
+@login_required
+def deck_practice_articles_view(request, deck_id):
+    deck = get_user_deck_or_404(request.user, deck_id)
+    session = get_practice_session(request)
+
+    if not session or session.get("deck_id") != str(deck.id) or session.get("mode") != "articles":
+        return redirect("deck_practice_setup", deck_id=deck.id)
+
+    card_id = get_current_card_id(request)
+    if card_id is None:
+        return redirect("deck_practice_done", deck_id=deck.id)
+
+    card = get_user_card_or_404(request.user, card_id)
+    remaining_count = get_remaining_count(request)
+
+    correct_article, word_without_article = split_article_and_word(card.question)
+
+    if request.method == "POST":
+        chosen_article = request.POST.get("chosen_article", "").strip().lower()
+        is_correct = is_correct_article_choice(card.question, chosen_article)
+
+        add_practice_summary_item(
+            request,
+            {
+                "question": word_without_article,
+                "answer": card.question,
+                "chosen_article": chosen_article,
+                "correct_article": correct_article,
+                "is_correct": is_correct,
+                "mode": "articles",
+            },
+        )
+
+        advance_practice_session(request)
+
+        if get_current_card_id(request) is None:
+            return redirect("deck_practice_done", deck_id=deck.id)
+
+        return redirect("deck_practice_articles", deck_id=deck.id)
+
+    return render(
+        request,
+        "study/deck_practice_articles.html",
+        {
+            "deck": deck,
+            "card": card,
+            "word_without_article": word_without_article,
+            "remaining_count": remaining_count,
+        },
+    )
+
+
+@login_required
+def repeat_practice_view(request, deck_id, mode):
+    deck = get_user_deck_or_404(request.user, deck_id)
+    cards = list(get_user_deck_cards(request.user, deck_id))
+
+    if mode not in {"flip", "typing", "articles"}:
+        return redirect("deck_practice_setup", deck_id=deck.id)
+
+    selected_cards = cards
+
+    if mode == "articles":
+        selected_cards = [card for card in cards if card.has_article]
+
+    if not selected_cards:
+        return redirect("deck_practice_setup", deck_id=deck.id)
+
+    start_deck_practice_session(
+        request,
+        deck,
+        mode,
+        [card.id for card in selected_cards],
+    )
+
+    if mode == "flip":
+        return redirect("deck_practice_flip", deck_id=deck.id)
+
+    if mode == "typing":
+        return redirect("deck_practice_typing", deck_id=deck.id)
+
+    return redirect("deck_practice_articles", deck_id=deck.id)

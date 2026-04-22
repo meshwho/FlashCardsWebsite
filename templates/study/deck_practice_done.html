@@ -54,13 +54,63 @@
             </table>
         </div>
     </div>
+{% elif summary.mode == "articles" %}
+    <div class="summary-grid">
+        <div class="summary-stat s-good">
+            <div class="s-value">{{ summary.correct_count }}</div>
+            <div class="s-label">Correct</div>
+        </div>
+        <div class="summary-stat s-again">
+            <div class="s-value">{{ summary.wrong_count }}</div>
+            <div class="s-label">Wrong</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Word</th>
+                        <th>Your choice</th>
+                        <th>Correct article</th>
+                        <th>Result</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in summary.items %}
+                        <tr>
+                            <td>{{ item.question }}</td>
+                            <td>{{ item.chosen_article|default:"—" }}</td>
+                            <td>{{ item.correct_article }}</td>
+                            <td>
+                                {% if item.is_correct %}
+                                    <span class="badge badge-green">Correct</span>
+                                {% else %}
+                                    <span class="badge badge-red">Wrong</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 {% else %}
     <div class="card">
         <p>You reviewed <strong>{{ summary.total }}</strong> cards in simple flip mode.</p>
     </div>
 {% endif %}
 
-<div style="margin-top: 24px;">
-    <a href="{% url 'deck_detail' deck.id %}" class="btn btn-primary">Back to deck</a>
+<div class="practice-done-actions">
+    {% if practice_mode %}
+        <a href="{% url 'deck_practice_repeat' deck.id practice_mode %}" class="btn btn-primary">
+            Repeat exercise
+        </a>
+    {% endif %}
+
+    <a href="{% url 'deck_detail' deck.id %}" class="btn btn-secondary">
+        Back to deck
+    </a>
 </div>
 {% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Article practice{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <h1>Article practice</h1>
+    <p class="subtitle">{{ deck.title }} · {{ remaining_count }} cards left</p>
+</div>
+
+<div class="card fade-in-2 article-practice-card">
+    <div class="face-label">Word</div>
+    <div class="card-text">{{ word_without_article }}</div>
+</div>
+
+<form method="post" class="article-choice-grid fade-in-3">
+    {% csrf_token %}
+    <button type="submit" name="chosen_article" value="der" class="article-choice-btn article-choice-btn--der">
+        <span class="article-choice-main">der</span>
+    </button>
+
+    <button type="submit" name="chosen_article" value="die" class="article-choice-btn article-choice-btn--die">
+        <span class="article-choice-main">die</span>
+    </button>
+
+    <button type="submit" name="chosen_article" value="das" class="article-choice-btn article-choice-btn--das">
+        <span class="article-choice-main">das</span>
+    </button>
+</form>
+{% endblock %}
