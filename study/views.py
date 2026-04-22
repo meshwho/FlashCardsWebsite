@@ -1,43 +1,29 @@
+from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render
-from .review_session import (
-    add_review_to_session,
-    clear_review_session,
-    get_review_session_summary,
-    start_review_session,
-)
-from .services import FSRSService
-from django.contrib import messages
 from django.db import transaction
+from django.db.models import Count
+from django.shortcuts import redirect, render
+from django.utils import timezone
+
+from .article_logic import is_correct_article_choice, split_article_and_word
+from .deck_metrics import enrich_deck_with_memory_score, enrich_decks_with_memory_scores
 from .forms import (
     CardInlineFormSet,
     DeckForm,
+    PracticeOptionsForm,
     ReviewScheduleForm,
     ReviewSlotFormSet,
+    SentencePracticeForm,
     SignUpForm,
 )
-from .models import ReviewSlot
-from .schedule_services import reschedule_all_user_cards
-from .selectors import (
-    ensure_default_review_slots,
-    get_due_cards_for_user,
-    get_next_due_card_for_user,
-    get_or_create_user_review_schedule,
-    get_user_deck_or_404,
-    get_user_decks,
-    get_user_review_slots,
-    get_weekly_due_schedule_for_user,
+from .models import Card, Deck, ReviewLog, ReviewSlot, SentenceAttempt
+from .practice_logic import (
+    MAX_HINTS as PRACTICE_MAX_HINTS,
+    get_hint_text,
+    get_prompt_and_expected,
+    get_typing_result,
 )
-from .review_logic import (
-    MAX_HINTS,
-    build_hint_mask,
-    get_rating_from_result,
-    is_correct_answer,
-)
-from collections import Counter
-
-from .practice_logic import MAX_HINTS, get_hint_text, get_prompt_and_expected, get_typing_result
 from .practice_session import (
     add_practice_summary_item,
     advance_practice_session,
@@ -47,24 +33,41 @@ from .practice_session import (
     get_practice_session,
     get_practice_summary,
     get_remaining_count,
+    go_back_practice_session,
+    should_require_sentences_in_practice,
     start_deck_practice_session,
 )
-from .selectors import get_user_card_or_404, get_user_deck_cards
-from .practice_session import go_back_practice_session
-from django.db.models import Count
-from django.utils import timezone
-from .models import Card, Deck, ReviewLog, ReviewSlot
-from .article_logic import split_article_and_word, is_correct_article_choice
-from .deck_metrics import enrich_deck_with_memory_score, enrich_decks_with_memory_scores
-from .forms import PracticeOptionsForm, SentencePracticeForm
+from .review_logic import (
+    MAX_HINTS as REVIEW_MAX_HINTS,
+    build_hint_mask,
+    get_rating_from_result,
+    is_correct_answer,
+)
+from .review_session import (
+    add_review_to_session,
+    clear_review_session,
+    get_review_session_summary,
+    start_review_session,
+)
+from .schedule_services import reschedule_all_user_cards
+from .selectors import (
+    ensure_default_review_slots,
+    get_due_cards_for_user,
+    get_next_due_card_for_user,
+    get_user_card_or_404,
+    get_user_deck_cards,
+    get_user_deck_or_404,
+    get_user_decks,
+    get_user_review_slots,
+    get_weekly_due_schedule_for_user,
+)
 from .sentence_logic import sentence_count_for_rating, should_require_sentences
 from .sentence_session import (
     clear_pending_sentence_task,
     get_pending_sentence_task,
     set_pending_sentence_task,
 )
-from .practice_session import should_require_sentences_in_practice
-from .models import SentenceAttempt
+from .services import FSRSService
 
 
 def _get_posted_non_negative_int(request, key, default=0):
@@ -297,7 +300,7 @@ def review_card_view(request):
         wrong_attempts_count = _get_posted_non_negative_int(request, "wrong_attempts_count", 0)
 
         if action == "hint":
-            hints_used = min(hints_used + 1, MAX_HINTS)
+            hints_used = min(hints_used + 1, REVIEW_MAX_HINTS)
             hint_text = build_hint_mask(card.answer, hints_used)
 
         elif action == "check":
@@ -415,7 +418,7 @@ def review_card_view(request):
             "remaining_count": remaining_count,
             "hints_used": hints_used,
             "wrong_attempts_count": wrong_attempts_count,
-            "max_hints": MAX_HINTS,
+            "max_hints": REVIEW_MAX_HINTS,
             "hint_text": hint_text,
             "user_answer": user_answer,
             "feedback": feedback,
@@ -442,6 +445,7 @@ def review_done_view(request):
 def deck_practice_setup_view(request, deck_id):
     deck = get_user_deck_or_404(request.user, deck_id)
     cards = list(get_user_deck_cards(request.user, deck_id))
+    practice_options_form = PracticeOptionsForm(request.POST or None)
 
     if not cards:
         return render(
@@ -455,9 +459,11 @@ def deck_practice_setup_view(request, deck_id):
 
     if request.method == "POST":
         mode = request.POST.get("mode")
-        require_sentences_after_mistake = bool(
-            request.POST.get("require_sentences_after_mistake")
-        )
+        require_sentences_after_mistake = False
+        if practice_options_form.is_valid():
+            require_sentences_after_mistake = practice_options_form.cleaned_data[
+                "require_sentences_after_mistake"
+            ]
 
         if mode not in {"flip", "typing", "articles"}:
             mode = "flip"
@@ -476,6 +482,8 @@ def deck_practice_setup_view(request, deck_id):
                         "has_cards": True,
                         "card_count": len(cards),
                         "has_article_cards": False,
+                        "article_card_count": 0,
+                        "practice_options_form": practice_options_form,
                     },
                 )
 
@@ -504,7 +512,7 @@ def deck_practice_setup_view(request, deck_id):
             "card_count": len(cards),
             "has_article_cards": any(card.has_article for card in cards),
             "article_card_count": sum(1 for card in cards if card.has_article),
-            "practice_options_form": PracticeOptionsForm(),
+            "practice_options_form": practice_options_form,
         },
     )
 
@@ -593,7 +601,7 @@ def deck_practice_typing_view(request, deck_id):
         wrong_attempts_count = _get_posted_non_negative_int(request, "wrong_attempts_count", 0)
 
         if action == "hint":
-            hints_used = min(hints_used + 1, MAX_HINTS)
+            hints_used = min(hints_used + 1, PRACTICE_MAX_HINTS)
             hint_text = get_hint_text(
                 qa["expected"],
                 hints_used,
@@ -636,6 +644,7 @@ def deck_practice_typing_view(request, deck_id):
                             "hints_used": hints_used,
                             "rating_label": result["rating_label"],
                             "direction_label": qa["direction_label"],
+                            "is_correct": True,
                             "mode": "typing",
                         },
                     )
@@ -651,6 +660,7 @@ def deck_practice_typing_view(request, deck_id):
                         "hints_used": hints_used,
                         "rating_label": result["rating_label"],
                         "direction_label": qa["direction_label"],
+                        "is_correct": True,
                         "mode": "typing",
                     },
                 )
@@ -706,6 +716,7 @@ def deck_practice_typing_view(request, deck_id):
                         "hints_used": hints_used,
                         "rating_label": result["rating_label"],
                         "direction_label": qa["direction_label"],
+                        "is_correct": False,
                         "mode": "typing",
                     },
                 )
@@ -722,6 +733,7 @@ def deck_practice_typing_view(request, deck_id):
                     "hints_used": hints_used,
                     "rating_label": result["rating_label"],
                     "direction_label": qa["direction_label"],
+                    "is_correct": False,
                     "mode": "typing",
                 },
             )
@@ -751,7 +763,7 @@ def deck_practice_typing_view(request, deck_id):
             "remaining_count": remaining_count,
             "hints_used": hints_used,
             "wrong_attempts_count": wrong_attempts_count,
-            "max_hints": MAX_HINTS,
+            "max_hints": PRACTICE_MAX_HINTS,
             "hint_text": hint_text,
             "user_answer": user_answer,
             "feedback": feedback,
@@ -1015,7 +1027,26 @@ def sentence_practice_view(request):
         clear_pending_sentence_task(request)
         return redirect("dashboard")
 
-    card = get_user_card_or_404(request.user, task["card_id"])
+    card_id = task.get("card_id")
+    if not card_id:
+        clear_pending_sentence_task(request)
+        return redirect("dashboard")
+
+    return_kwargs = task.get("return_url_kwargs", {})
+    if not isinstance(return_kwargs, dict):
+        clear_pending_sentence_task(request)
+        return redirect("dashboard")
+
+    if return_name == "review_card":
+        allowed_kwargs = set()
+    else:
+        allowed_kwargs = {"deck_id"}
+
+    if set(return_kwargs.keys()) != allowed_kwargs:
+        clear_pending_sentence_task(request)
+        return redirect("dashboard")
+
+    card = get_user_card_or_404(request.user, card_id)
 
     if request.method == "POST":
         form = SentencePracticeForm(request.POST, sentence_count=required_count)
@@ -1030,8 +1061,6 @@ def sentence_practice_view(request):
                     source_mode=source_mode,
                     sentence=sentence_text,
                 )
-
-            return_kwargs = task.get("return_url_kwargs", {})
 
             clear_pending_sentence_task(request)
             return redirect(return_name, **return_kwargs)

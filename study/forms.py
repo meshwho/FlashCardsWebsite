@@ -2,11 +2,10 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.forms import BaseInlineFormSet, inlineformset_factory
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-from .models import Card, Deck
-from datetime import time
 from django.forms import formset_factory
-from .models import ReviewSlot, UserReviewSchedule
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from .models import Card, Deck, UserReviewSchedule
 
 class SignUpForm(UserCreationForm):
     email = forms.EmailField(required=True)
