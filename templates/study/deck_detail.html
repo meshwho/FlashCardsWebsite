@@ -19,38 +19,36 @@
 </div>
 
 {% if deck.cards.exists %}
-    <div class="card fade-in-2">
-        <div class="table-wrap">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Question</th>
-                        <th>Answer</th>
-                        <th>State</th>
-                        <th>Next review</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for card in deck.cards.all %}
-                        <tr>
-                            <td>{{ card.question|truncatechars:100 }}</td>
-                            <td>{{ card.answer|truncatechars:100 }}</td>
-                            <td>
-                                <span class="badge
-                                    {% if card.state == 'Learning' %}badge-amber
-                                    {% elif card.state == 'Review' %}badge-green
-                                    {% elif card.state == 'Relearning' %}badge-red
-                                    {% else %}badge-muted{% endif %}">
-                                    {{ card.state }}
-                                </span>
-                            </td>
-                            <td>{{ card.due|date:"M d, Y H:i" }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+    <div class="table-wrap table-mobile-cards">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Question</th>
+                <th>Answer</th>
+                <th>State</th>
+                <th>Next review</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for card in deck.cards.all %}
+                <tr>
+                    <td data-label="Question">{{ card.question|truncatechars:100 }}</td>
+                    <td data-label="Answer">{{ card.answer|truncatechars:100 }}</td>
+                    <td data-label="State">
+                        <span class="badge
+                            {% if card.state == 'Learning' %}badge-amber
+                            {% elif card.state == 'Review' %}badge-green
+                            {% elif card.state == 'Relearning' %}badge-red
+                            {% else %}badge-muted{% endif %}">
+                            {{ card.state }}
+                        </span>
+                    </td>
+                    <td data-label="Next review">{{ card.due|date:"M d, Y H:i" }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% else %}
     <div class="empty-state card fade-in-2">
         <span class="empty-icon">◌</span>

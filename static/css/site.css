@@ -854,6 +854,59 @@ textarea { resize: vertical; min-height: 90px; }
 }
 .article-choice-btn:active { transform: translateY(0); }
 
+/* ── Mobile table cards ── */
+@media (max-width: 640px) {
+    .table-mobile-cards .data-table,
+    .table-mobile-cards .data-table tbody,
+    .table-mobile-cards .data-table tr,
+    .table-mobile-cards .data-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .table-mobile-cards .data-table {
+        min-width: 0;
+    }
+
+    .table-mobile-cards .data-table thead {
+        display: none;
+    }
+
+    .table-mobile-cards .data-table tbody {
+        display: grid;
+        gap: 12px;
+    }
+
+    .table-mobile-cards .data-table tbody tr {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+    }
+
+    .table-mobile-cards .data-table tbody td {
+        padding: 0;
+        border: 0;
+        color: var(--text);
+    }
+
+    .table-mobile-cards .data-table tbody td + td {
+        margin-top: 10px;
+    }
+
+    .table-mobile-cards .data-table tbody td::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 4px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-3);
+    }
+}
+
 /* ════════════════════════════════════════
    Responsive
    ════════════════════════════════════════ */
@@ -867,7 +920,20 @@ textarea { resize: vertical; min-height: 90px; }
 
 /* Tablet portrait */
 @media (max-width: 720px) {
-    .weekly-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .weekly-grid {
+        grid-template-columns: none;
+        grid-auto-flow: column;
+        grid-auto-columns: 92px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+        gap: 10px;
+        padding-bottom: 6px;
+    }
+
+    .day-card {
+        scroll-snap-align: start;
+    }
 
     .summary-grid { grid-template-columns: repeat(2, 1fr); }
     .card-form-row { grid-template-columns: 1fr; }
@@ -898,7 +964,31 @@ textarea { resize: vertical; min-height: 90px; }
 
     .page-wrapper { padding: 28px 16px 56px; }
 
-    .stats-row { margin-bottom: 24px; }
+    .profile-hero {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .profile-hero-badges {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .stats-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        width: 100%;
+        min-width: 0;
+        padding: 16px;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+    }
 
     .due-count { font-size: 3rem; }
 
@@ -913,6 +1003,12 @@ textarea { resize: vertical; min-height: 90px; }
     .auth-box { padding: 28px 20px; }
 }
 
+@media (max-width: 380px) {
+    .stats-row {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Small mobile */
 @media (max-width: 480px) {
     h1 { font-size: 1.625rem; }
@@ -922,10 +1018,30 @@ textarea { resize: vertical; min-height: 90px; }
     .flashcard-face { padding: 28px 18px; }
 
     /* All 7 days in 4-col wrapping grid on small screens */
-    .weekly-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-    .day-card { padding: 10px 6px; }
-    .day-count { font-size: 1.3rem; }
+    .weekly-grid {
+        grid-auto-columns: 88px;
+        gap: 8px;
+    }
 
+    .day-card {
+        padding: 12px 8px;
+    }
+
+    .day-name {
+        font-size: 0.68rem;
+    }
+
+    .day-date {
+        font-size: 0.72rem;
+    }
+
+    .day-count {
+        font-size: 1.45rem;
+    }
+
+    .day-unit {
+        font-size: 0.68rem;
+    }
     .cta-bar .btn,
     .stack-actions .btn,
     .study-today-wrap .btn { width: 100%; justify-content: center; }
