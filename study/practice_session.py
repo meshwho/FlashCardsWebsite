@@ -1,9 +1,17 @@
 import random
 from collections import Counter
+
+
 SESSION_KEY = "deck_practice_session"
 
 
-def start_deck_practice_session(request, deck, mode, card_ids, require_sentences_after_mistake=False):
+def start_deck_practice_session(
+    request,
+    deck,
+    mode,
+    card_ids,
+    require_sentences_after_mistake=False,
+):
     random.shuffle(card_ids)
 
     directions = []
@@ -25,13 +33,6 @@ def start_deck_practice_session(request, deck, mode, card_ids, require_sentences
         "require_sentences_after_mistake": require_sentences_after_mistake,
     }
     request.session.modified = True
-
-
-def should_require_sentences_in_practice(request):
-    session = get_practice_session(request)
-    if not session:
-        return False
-    return bool(session.get("require_sentences_after_mistake", False))
 
 
 def get_practice_session(request):
@@ -92,52 +93,6 @@ def advance_practice_session(request):
     request.session.modified = True
 
 
-def add_practice_summary_item(request, item):
-    session = get_practice_session(request)
-    if not session:
-        return
-
-    session.setdefault("summary", []).append(item)
-    request.session[SESSION_KEY] = session
-    request.session.modified = True
-
-
-def get_practice_summary(request):
-    session = get_practice_session(request)
-    if not session:
-        return {
-            "mode": None,
-            "total": 0,
-            "again_count": 0,
-            "hard_count": 0,
-            "good_count": 0,
-            "easy_count": 0,
-            "correct_count": 0,
-            "wrong_count": 0,
-            "der_count": 0,
-            "die_count": 0,
-            "das_count": 0,
-            "items": [],
-        }
-
-    items = session.get("summary", [])
-    rating_counter = Counter(item.get("rating_label") for item in items)
-    article_counter = Counter(item.get("chosen_article") for item in items)
-
-    return {
-        "mode": session.get("mode"),
-        "total": len(items),
-        "again_count": rating_counter.get("Again", 0),
-        "hard_count": rating_counter.get("Hard", 0),
-        "good_count": rating_counter.get("Good", 0),
-        "easy_count": rating_counter.get("Easy", 0),
-        "correct_count": sum(1 for item in items if item.get("is_correct")),
-        "wrong_count": sum(1 for item in items if not item.get("is_correct")),
-        "der_count": article_counter.get("der", 0),
-        "die_count": article_counter.get("die", 0),
-        "das_count": article_counter.get("das", 0),
-        "items": items,
-    }
 def go_back_practice_session(request):
     session = get_practice_session(request)
     if not session:
@@ -154,8 +109,71 @@ def go_back_practice_session(request):
     request.session[SESSION_KEY] = session
     request.session.modified = True
 
-def get_last_practice_mode(request):
+
+def add_practice_summary_item(request, item):
     session = get_practice_session(request)
     if not session:
-        return None
-    return session.get("mode")
+        return
+
+    session.setdefault("summary", []).append(item)
+    request.session[SESSION_KEY] = session
+    request.session.modified = True
+
+
+def should_require_sentences_in_practice(request):
+    session = get_practice_session(request)
+    if not session:
+        return False
+    return bool(session.get("require_sentences_after_mistake", False))
+
+
+def get_practice_summary(request):
+    session = get_practice_session(request)
+    if not session:
+        return {
+            "mode": None,
+            "total": 0,
+            "again_count": 0,
+            "hard_count": 0,
+            "good_count": 0,
+            "easy_count": 0,
+            "correct_count": 0,
+            "wrong_count": 0,
+            "perfect_count": 0,
+            "after_mistakes_count": 0,
+            "total_mistakes": 0,
+            "der_count": 0,
+            "die_count": 0,
+            "das_count": 0,
+            "items": [],
+        }
+
+    items = session.get("summary", [])
+
+    if session.get("mode") == "articles":
+        return {
+            "mode": session.get("mode"),
+            "total": len(items),
+            "perfect_count": sum(1 for item in items if item.get("mistakes_count", 0) == 0),
+            "after_mistakes_count": sum(1 for item in items if item.get("mistakes_count", 0) > 0),
+            "total_mistakes": sum(item.get("mistakes_count", 0) for item in items),
+            "der_count": sum(1 for item in items if item.get("chosen_article") == "der"),
+            "die_count": sum(1 for item in items if item.get("chosen_article") == "die"),
+            "das_count": sum(1 for item in items if item.get("chosen_article") == "das"),
+            "items": items,
+        }
+
+    return {
+        "mode": session.get("mode"),
+        "total": len(items),
+        "again_count": sum(1 for item in items if item.get("rating_label") == "Again"),
+        "hard_count": sum(1 for item in items if item.get("rating_label") == "Hard"),
+        "good_count": sum(1 for item in items if item.get("rating_label") == "Good"),
+        "easy_count": sum(1 for item in items if item.get("rating_label") == "Easy"),
+        "correct_count": sum(1 for item in items if item.get("is_correct")),
+        "wrong_count": sum(1 for item in items if not item.get("is_correct")),
+        "der_count": sum(1 for item in items if item.get("chosen_article") == "der"),
+        "die_count": sum(1 for item in items if item.get("chosen_article") == "die"),
+        "das_count": sum(1 for item in items if item.get("chosen_article") == "das"),
+        "items": items,
+    }

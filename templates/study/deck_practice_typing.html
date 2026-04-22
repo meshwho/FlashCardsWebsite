@@ -28,7 +28,7 @@
     <form method="post">
         {% csrf_token %}
         <input type="hidden" name="hints_used" value="{{ hints_used }}">
-
+        <input type="hidden" name="wrong_attempts_count" value="{{ wrong_attempts_count|default:0 }}">
         <div class="form-group">
             <label for="id_user_answer">Your answer</label>
             <input type="text" name="user_answer" id="id_user_answer" value="{{ user_answer }}" autocomplete="off" autofocus>

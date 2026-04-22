@@ -13,17 +13,25 @@
     <div class="card-text">{{ word_without_article }}</div>
 </div>
 
+{% if feedback %}
+    <div class="form-error-banner fade-in-2" style="margin-bottom: 20px;">
+        <p>{{ feedback }}</p>
+    </div>
+{% endif %}
+
 <form method="post" class="article-choice-grid fade-in-3">
     {% csrf_token %}
-    <button type="submit" name="chosen_article" value="der" class="article-choice-btn article-choice-btn--der">
+    <input type="hidden" name="wrong_attempts_count" value="{{ wrong_attempts_count|default:0 }}">
+
+    <button type="submit" name="chosen_article" value="der" class="article-choice-btn">
         <span class="article-choice-main">der</span>
     </button>
 
-    <button type="submit" name="chosen_article" value="die" class="article-choice-btn article-choice-btn--die">
+    <button type="submit" name="chosen_article" value="die" class="article-choice-btn">
         <span class="article-choice-main">die</span>
     </button>
 
-    <button type="submit" name="chosen_article" value="das" class="article-choice-btn article-choice-btn--das">
+    <button type="submit" name="chosen_article" value="das" class="article-choice-btn">
         <span class="article-choice-main">das</span>
     </button>
 </form>

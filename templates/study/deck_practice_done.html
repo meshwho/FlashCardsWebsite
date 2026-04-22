@@ -57,12 +57,16 @@
 {% elif summary.mode == "articles" %}
     <div class="summary-grid">
         <div class="summary-stat s-good">
-            <div class="s-value">{{ summary.correct_count }}</div>
-            <div class="s-label">Correct</div>
+            <div class="s-value">{{ summary.perfect_count }}</div>
+            <div class="s-label">First try correct</div>
+        </div>
+        <div class="summary-stat s-hard">
+            <div class="s-value">{{ summary.after_mistakes_count }}</div>
+            <div class="s-label">Correct after mistakes</div>
         </div>
         <div class="summary-stat s-again">
-            <div class="s-value">{{ summary.wrong_count }}</div>
-            <div class="s-label">Wrong</div>
+            <div class="s-value">{{ summary.total_mistakes }}</div>
+            <div class="s-label">Total mistakes</div>
         </div>
     </div>
 
@@ -74,6 +78,7 @@
                         <th>Word</th>
                         <th>Your choice</th>
                         <th>Correct article</th>
+                        <th>Mistakes</th>
                         <th>Result</th>
                     </tr>
                 </thead>
@@ -83,11 +88,12 @@
                             <td>{{ item.question }}</td>
                             <td>{{ item.chosen_article|default:"—" }}</td>
                             <td>{{ item.correct_article }}</td>
+                            <td>{{ item.mistakes_count }}</td>
                             <td>
-                                {% if item.is_correct %}
-                                    <span class="badge badge-green">Correct</span>
+                                {% if item.mistakes_count == 0 %}
+                                    <span class="badge badge-green">Perfect</span>
                                 {% else %}
-                                    <span class="badge badge-red">Wrong</span>
+                                    <span class="badge badge-amber">After mistakes</span>
                                 {% endif %}
                             </td>
                         </tr>

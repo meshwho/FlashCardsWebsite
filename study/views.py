@@ -267,6 +267,7 @@ def review_card_view(request):
     remaining_count = get_due_cards_for_user(request.user).count()
 
     hints_used = 0
+    wrong_attempts_count = 0
     user_answer = ""
     hint_text = ""
     feedback = ""
@@ -277,6 +278,7 @@ def review_card_view(request):
         action = request.POST.get("action")
         user_answer = request.POST.get("user_answer", "").strip()
         hints_used = int(request.POST.get("hints_used", 0))
+        wrong_attempts_count = int(request.POST.get("wrong_attempts_count", 0))
 
         if action == "hint":
             hints_used = min(hints_used + 1, MAX_HINTS)
@@ -285,6 +287,7 @@ def review_card_view(request):
         elif action == "check":
             if is_correct_answer(user_answer, card.answer):
                 rating_value = get_rating_from_result(hints_used, knows_answer=True)
+
                 service = FSRSService()
                 outcome = service.review_card(card, rating_value)
 
@@ -296,17 +299,38 @@ def review_card_view(request):
                     hints_used=hints_used,
                 )
 
+                required_count = sentence_count_for_rating(rating_value)
+
+                if should_require_sentences(
+                    was_wrong_before_correct=bool(wrong_attempts_count > 0),
+                    rating_value=rating_value,
+                ):
+                    set_pending_sentence_task(
+                        request,
+                        card_id=outcome.card.id,
+                        source_mode="fsrs",
+                        rating_value=rating_value,
+                        required_count=required_count,
+                        return_url_name="review_card",
+                        return_url_kwargs={},
+                    )
+                    return redirect("sentence_practice")
+
                 next_card = get_next_due_card_for_user(request.user)
                 if next_card is None:
                     return redirect("review_done")
+
                 return redirect("review_card")
+
             else:
+                wrong_attempts_count += 1
                 feedback = "Not quite right. Try again or use a hint."
                 feedback_type = "error"
                 hint_text = build_hint_mask(card.answer, hints_used)
 
         elif action == "dont_know":
             rating_value = get_rating_from_result(hints_used, knows_answer=False)
+
             service = FSRSService()
             outcome = service.review_card(card, rating_value)
 
@@ -318,13 +342,10 @@ def review_card_view(request):
                 hints_used=hints_used,
             )
 
-            answer_revealed = True
-            feedback = f"Correct answer: {card.answer}"
-            feedback_type = "info"
-
             next_card = get_next_due_card_for_user(request.user)
             if next_card is None:
                 return redirect("review_done")
+
             return redirect("review_card")
 
     else:
@@ -340,6 +361,7 @@ def review_card_view(request):
             "card": card,
             "remaining_count": remaining_count,
             "hints_used": hints_used,
+            "wrong_attempts_count": wrong_attempts_count,
             "max_hints": MAX_HINTS,
             "hint_text": hint_text,
             "user_answer": user_answer,
@@ -506,6 +528,7 @@ def deck_practice_typing_view(request, deck_id):
     remaining_count = get_remaining_count(request)
 
     hints_used = 0
+    wrong_attempts_count = 0
     user_answer = ""
     hint_text = ""
     feedback = ""
@@ -514,6 +537,7 @@ def deck_practice_typing_view(request, deck_id):
         action = request.POST.get("action")
         user_answer = request.POST.get("user_answer", "").strip()
         hints_used = int(request.POST.get("hints_used", 0))
+        wrong_attempts_count = int(request.POST.get("wrong_attempts_count", 0))
 
         if action == "hint":
             hints_used = min(hints_used + 1, MAX_HINTS)
@@ -547,16 +571,37 @@ def deck_practice_typing_view(request, deck_id):
 
                 advance_practice_session(request)
 
+                if (
+                    should_require_sentences_in_practice(request)
+                    and should_require_sentences(
+                        was_wrong_before_correct=bool(wrong_attempts_count > 0),
+                        rating_value=result["rating_value"],
+                    )
+                ):
+                    required_count = sentence_count_for_rating(result["rating_value"])
+
+                    set_pending_sentence_task(
+                        request,
+                        card_id=card.id,
+                        source_mode="typing_practice",
+                        rating_value=result["rating_value"],
+                        required_count=required_count,
+                        return_url_name="deck_practice_typing",
+                        return_url_kwargs={"deck_id": deck.id},
+                    )
+                    return redirect("sentence_practice")
+
                 if get_current_card_id(request) is None:
                     return redirect("deck_practice_done", deck_id=deck.id)
 
                 return redirect("deck_practice_typing", deck_id=deck.id)
 
             feedback = "Not quite right. Try again or use a hint."
+            wrong_attempts_count += 1
             hint_text = get_hint_text(
                 qa["expected"],
                 hints_used,
-                has_article=card.has_article if direction == "forward" else False,
+                has_article=use_article_logic,
             )
 
         elif action == "dont_know":
@@ -604,13 +649,13 @@ def deck_practice_typing_view(request, deck_id):
             "direction_label": qa["direction_label"],
             "remaining_count": remaining_count,
             "hints_used": hints_used,
+            "wrong_attempts_count": wrong_attempts_count,
             "max_hints": MAX_HINTS,
             "hint_text": hint_text,
             "user_answer": user_answer,
             "feedback": feedback,
         },
     )
-
 
 @login_required
 def deck_practice_done_view(request, deck_id):
@@ -710,9 +755,41 @@ def deck_practice_articles_view(request, deck_id):
 
     correct_article, word_without_article = split_article_and_word(card.question)
 
+    wrong_attempts_count = 0
+    feedback = ""
+
     if request.method == "POST":
+        wrong_attempts_count = int(request.POST.get("wrong_attempts_count", 0))
         chosen_article = request.POST.get("chosen_article", "").strip().lower()
+
         is_correct = is_correct_article_choice(card.question, chosen_article)
+
+        if not is_correct:
+            wrong_attempts_count += 1
+            feedback = "Wrong article. Try again."
+
+            return render(
+                request,
+                "study/deck_practice_articles.html",
+                {
+                    "deck": deck,
+                    "card": card,
+                    "word_without_article": word_without_article,
+                    "remaining_count": remaining_count,
+                    "wrong_attempts_count": wrong_attempts_count,
+                    "feedback": feedback,
+                },
+            )
+
+        if wrong_attempts_count == 0:
+            rating_value = 4   # Easy
+            rating_label = "Easy"
+        elif wrong_attempts_count == 1:
+            rating_value = 2   # Hard
+            rating_label = "Hard"
+        else:
+            rating_value = 1   # Again
+            rating_label = "Again"
 
         add_practice_summary_item(
             request,
@@ -721,7 +798,10 @@ def deck_practice_articles_view(request, deck_id):
                 "answer": card.question,
                 "chosen_article": chosen_article,
                 "correct_article": correct_article,
-                "is_correct": is_correct,
+                "is_correct": True,
+                "mistakes_count": wrong_attempts_count,
+                "is_perfect": wrong_attempts_count == 0,
+                "rating_label": rating_label,
                 "mode": "articles",
             },
         )
@@ -741,6 +821,8 @@ def deck_practice_articles_view(request, deck_id):
             "card": card,
             "word_without_article": word_without_article,
             "remaining_count": remaining_count,
+            "wrong_attempts_count": wrong_attempts_count,
+            "feedback": feedback,
         },
     )
 
@@ -789,6 +871,7 @@ def sentence_practice_view(request):
 
     if request.method == "POST":
         form = SentencePracticeForm(request.POST, sentence_count=required_count)
+
         if form.is_valid():
             for i in range(required_count):
                 sentence_text = form.cleaned_data[f"sentence_{i+1}"].strip()

@@ -11,13 +11,18 @@ def set_pending_sentence_task(
     return_url_name,
     return_url_kwargs=None,
 ):
+    serialized_kwargs = {}
+
+    for key, value in (return_url_kwargs or {}).items():
+        serialized_kwargs[key] = str(value)
+
     request.session[SESSION_KEY] = {
         "card_id": str(card_id),
         "source_mode": source_mode,
         "rating_value": rating_value,
         "required_count": required_count,
         "return_url_name": return_url_name,
-        "return_url_kwargs": return_url_kwargs or {},
+        "return_url_kwargs": serialized_kwargs,
     }
     request.session.modified = True
 
