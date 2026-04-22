@@ -287,24 +287,25 @@ def review_card_view(request):
         elif action == "check":
             if is_correct_answer(user_answer, card.answer):
                 rating_value = get_rating_from_result(hints_used, knows_answer=True)
-
                 service = FSRSService()
                 outcome = service.review_card(card, rating_value)
 
-                add_review_to_session(
-                    request,
-                    outcome.card,
-                    rating_value,
-                    user_answer=user_answer,
-                    hints_used=hints_used,
-                )
-
-                required_count = sentence_count_for_rating(rating_value)
-
                 if should_require_sentences(
-                    was_wrong_before_correct=bool(wrong_attempts_count > 0),
-                    rating_value=rating_value,
+                        had_wrong_attempt=bool(wrong_attempts_count > 0),
+                        had_hint=bool(hints_used > 0),
+                        rating_value=rating_value,
+                        feature_enabled=True,
                 ):
+                    required_count = sentence_count_for_rating(rating_value)
+
+                    add_review_to_session(
+                        request,
+                        outcome.card,
+                        rating_value,
+                        user_answer=user_answer,
+                        hints_used=hints_used,
+                    )
+
                     set_pending_sentence_task(
                         request,
                         card_id=outcome.card.id,
@@ -316,12 +317,18 @@ def review_card_view(request):
                     )
                     return redirect("sentence_practice")
 
+                add_review_to_session(
+                    request,
+                    outcome.card,
+                    rating_value,
+                    user_answer=user_answer,
+                    hints_used=hints_used,
+                )
+
                 next_card = get_next_due_card_for_user(request.user)
                 if next_card is None:
                     return redirect("review_done")
-
                 return redirect("review_card")
-
             else:
                 wrong_attempts_count += 1
                 feedback = "Not quite right. Try again or use a hint."
@@ -330,7 +337,6 @@ def review_card_view(request):
 
         elif action == "dont_know":
             rating_value = get_rating_from_result(hints_used, knows_answer=False)
-
             service = FSRSService()
             outcome = service.review_card(card, rating_value)
 
@@ -342,10 +348,13 @@ def review_card_view(request):
                 hints_used=hints_used,
             )
 
+            answer_revealed = True
+            feedback = f"Correct answer: {card.answer}"
+            feedback_type = "info"
+
             next_card = get_next_due_card_for_user(request.user)
             if next_card is None:
                 return redirect("review_done")
-
             return redirect("review_card")
 
     else:
@@ -556,6 +565,39 @@ def deck_practice_typing_view(request, deck_id):
             )
 
             if result["is_correct"]:
+                if should_require_sentences(
+                        had_wrong_attempt=bool(wrong_attempts_count > 0),
+                        had_hint=bool(hints_used > 0),
+                        rating_value=result["rating_value"],
+                        feature_enabled=should_require_sentences_in_practice(request),
+                ):
+                    required_count = sentence_count_for_rating(result["rating_value"])
+
+                    set_pending_sentence_task(
+                        request,
+                        card_id=card.id,
+                        source_mode="typing_practice",
+                        rating_value=result["rating_value"],
+                        required_count=required_count,
+                        return_url_name="deck_practice_typing",
+                        return_url_kwargs={"deck_id": deck.id},
+                    )
+
+                    add_practice_summary_item(
+                        request,
+                        {
+                            "question": qa["prompt"],
+                            "answer": qa["expected"],
+                            "user_answer": user_answer,
+                            "hints_used": hints_used,
+                            "rating_label": result["rating_label"],
+                            "direction_label": qa["direction_label"],
+                            "mode": "typing",
+                        },
+                    )
+                    advance_practice_session(request)
+                    return redirect("sentence_practice")
+
                 add_practice_summary_item(
                     request,
                     {
@@ -570,26 +612,6 @@ def deck_practice_typing_view(request, deck_id):
                 )
 
                 advance_practice_session(request)
-
-                if (
-                    should_require_sentences_in_practice(request)
-                    and should_require_sentences(
-                        was_wrong_before_correct=bool(wrong_attempts_count > 0),
-                        rating_value=result["rating_value"],
-                    )
-                ):
-                    required_count = sentence_count_for_rating(result["rating_value"])
-
-                    set_pending_sentence_task(
-                        request,
-                        card_id=card.id,
-                        source_mode="typing_practice",
-                        rating_value=result["rating_value"],
-                        required_count=required_count,
-                        return_url_name="deck_practice_typing",
-                        return_url_kwargs={"deck_id": deck.id},
-                    )
-                    return redirect("sentence_practice")
 
                 if get_current_card_id(request) is None:
                     return redirect("deck_practice_done", deck_id=deck.id)
