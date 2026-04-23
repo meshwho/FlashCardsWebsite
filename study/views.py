@@ -68,6 +68,8 @@ from .sentence_session import (
     set_pending_sentence_task,
 )
 from .services import FSRSService
+from audit.models import AuditLog
+from audit.utils import log_action
 
 
 def _get_posted_non_negative_int(request, key, default=0):
@@ -90,6 +92,19 @@ def signup_view(request):
         if form.is_valid():
             user = form.save()
             login(request, user)
+
+            log_action(
+                user=user,
+                action=AuditLog.ACTION_CREATE,
+                message="User account created",
+                entity=user,
+                details={
+                    "username": user.username,
+                    "email": getattr(user, "email", ""),
+                },
+                request=request,
+            )
+
             return redirect("dashboard")
     else:
         form = SignUpForm()
@@ -156,6 +171,22 @@ def dashboard_view(request):
 
                 updated_count = reschedule_all_user_cards(request.user)
 
+            slot_values = [slot.time.strftime("%H:%M") for slot in cleaned_slots]
+
+            log_action(
+                user=request.user,
+                action=AuditLog.ACTION_UPDATE,
+                message="Review schedule updated",
+                entity=schedule,
+                details={
+                    "timezone": schedule.timezone,
+                    "is_active": schedule.is_active,
+                    "slots": slot_values,
+                    "updated_card_due_times": updated_count,
+                },
+                request=request,
+            )
+
             messages.success(
                 request,
                 f"Schedule saved. Updated {updated_count} card due times."
@@ -208,6 +239,19 @@ def deck_create_view(request):
             deck = form.save(commit=False)
             deck.owner = request.user
             deck.save()
+
+            log_action(
+                user=request.user,
+                action=AuditLog.ACTION_CREATE,
+                message=f'Deck "{deck.title}" created',
+                entity=deck,
+                details={
+                    "title": deck.title,
+                    "owner_id": request.user.id,
+                },
+                request=request,
+            )
+
             return redirect("deck_edit", deck_id=deck.id)
     else:
         form = DeckForm(user=request.user)
@@ -238,8 +282,28 @@ def deck_edit_view(request, deck_id):
         card_formset = CardInlineFormSet(request.POST, instance=deck)
 
         if deck_form.is_valid() and card_formset.is_valid():
+            old_title = deck.title
+            old_card_count = deck.cards.count()
+
             deck_form.save()
             card_formset.save()
+
+            deck.refresh_from_db()
+
+            log_action(
+                user=request.user,
+                action=AuditLog.ACTION_UPDATE,
+                message=f'Deck "{deck.title}" updated',
+                entity=deck,
+                details={
+                    "old_title": old_title,
+                    "new_title": deck.title,
+                    "old_card_count": old_card_count,
+                    "new_card_count": deck.cards.count(),
+                },
+                request=request,
+            )
+
             return redirect("deck_detail", deck_id=deck.id)
     else:
         deck_form = DeckForm(instance=deck, user=request.user)
@@ -431,6 +495,17 @@ def review_card_view(request):
 @login_required
 def review_done_view(request):
     summary = get_review_session_summary(request)
+
+    log_action(
+        user=request.user,
+        action=AuditLog.ACTION_REVIEW,
+        message="Review session completed",
+        details={
+            "summary": summary,
+        },
+        request=request,
+    )
+
     clear_review_session(request)
 
     return render(
@@ -493,6 +568,19 @@ def deck_practice_setup_view(request, deck_id):
             mode,
             [card.id for card in selected_cards],
             require_sentences_after_mistake=require_sentences_after_mistake,
+        )
+
+        log_action(
+            user=request.user,
+            action=AuditLog.ACTION_PRACTICE,
+            message=f'Practice session started for deck "{deck.title}"',
+            entity=deck,
+            details={
+                "mode": mode,
+                "selected_cards_count": len(selected_cards),
+                "require_sentences_after_mistake": require_sentences_after_mistake,
+            },
+            request=request,
         )
 
         if mode == "flip":
@@ -775,6 +863,19 @@ def deck_practice_done_view(request, deck_id):
     deck = get_user_deck_or_404(request.user, deck_id)
     summary = get_practice_summary(request)
     practice_mode = summary.get("mode")
+
+    log_action(
+        user=request.user,
+        action=AuditLog.ACTION_PRACTICE,
+        message=f'Practice session finished for deck "{deck.title}"',
+        entity=deck,
+        details={
+            "mode": practice_mode,
+            "summary": summary,
+        },
+        request=request,
+    )
+
     clear_practice_session(request)
 
     return render(
@@ -1062,6 +1163,19 @@ def sentence_practice_view(request):
                     sentence=sentence_text,
                 )
 
+            log_action(
+                user=request.user,
+                action=AuditLog.ACTION_PRACTICE,
+                message="Sentence practice completed",
+                entity=card,
+                details={
+                    "source_mode": source_mode,
+                    "required_count": required_count,
+                    "card_id": str(card.id),
+                },
+                request=request,
+            )
+            
             clear_pending_sentence_task(request)
             return redirect(return_name, **return_kwargs)
     else:
