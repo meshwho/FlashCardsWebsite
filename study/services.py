@@ -78,7 +78,7 @@ class FSRSService:
         slot_times = get_user_review_slots(card.owner)
 
         schedule = getattr(card.owner, "review_schedule", None)
-        tz_name = schedule.timezone if schedule else "Europe/Zaporozhye"
+        tz_name = schedule.timezone if schedule else "Europe/Kyiv"
 
         updated_fsrs_card.due = snap_due_to_next_slot(
             updated_fsrs_card.due,

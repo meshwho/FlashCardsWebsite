@@ -9,8 +9,7 @@ from .scheduling import snap_due_to_next_slot
 def reschedule_all_user_cards(user):
     schedule = get_or_create_user_review_schedule(user)
     slot_times = get_user_review_slots(user)
-    tz_name = schedule.timezone if schedule else "Europe/Zaporozhye"
-
+    tz_name = schedule.timezone if schedule else "Europe/Kyiv"
     cards = Card.objects.filter(deck__owner=user).select_related("deck")
 
     updated_cards = []

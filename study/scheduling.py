@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 from django.utils import timezone
 
 
-def snap_due_to_next_slot(due_dt, slot_times, tz_name="Europe/Zaporozhye"):
+def snap_due_to_next_slot(due_dt, slot_times, tz_name="Europe/Kyiv"):
     """
     Round a due datetime up to the next allowed user review slot.
     If there are no slots, return the original due datetime.

@@ -3,5 +3,4 @@ fsrs
 psycopg[binary]
 python-dotenv
 gunicorn
-waitress
 whitenoise
