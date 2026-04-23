@@ -1,0 +1,14 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.git/
+.gitignore
+.env
+db.sqlite3
+db.sqlite3.backup
+data.sqlite.json
+reset_sequences.sql
+staticfiles/
+media/

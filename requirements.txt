@@ -1,0 +1,7 @@
+Django==5.2.13
+fsrs
+psycopg[binary]
+python-dotenv
+gunicorn
+waitress
+whitenoise
