@@ -38,31 +38,22 @@ services:
     image: nginx:1.27-alpine
     container_name: flashcards_website_nginx
     restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      TZ: Europe/Kyiv
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - static_volume:/app/staticfiles
       - media_volume:/app/media
-      - ./certbot/www:/var/www/certbot
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/origin:/etc/nginx/origin-certs:ro
     depends_on:
       web:
         condition: service_healthy
-
-  certbot:
-    image: certbot/certbot
-    container_name: flashcards_website_certbot
-    volumes:
-      - ./certbot/www:/var/www/certbot
-      - ./certbot/conf:/etc/letsencrypt
+    networks:
+      - default
+      - public_proxy
 
 volumes:
   postgres_data:
   static_volume:
   media_volume:
+
+networks:
+  public_proxy:
+    external: true
