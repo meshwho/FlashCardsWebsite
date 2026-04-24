@@ -76,14 +76,6 @@
             {% endif %}
         </div>
 
-        <div class="form-group">
-            <label for="{{ schedule_form.timezone.id_for_label }}">Timezone</label>
-            {{ schedule_form.timezone }}
-            {% if schedule_form.timezone.errors %}
-                {{ schedule_form.timezone.errors }}
-            {% endif %}
-        </div>
-
         <div class="form-group schedule-inline-check">
             <label for="{{ schedule_form.is_active.id_for_label }}">Use schedule rounding</label>
             {{ schedule_form.is_active }}

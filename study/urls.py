@@ -19,6 +19,7 @@ from .views import (
     deck_practice_articles_view,
     repeat_practice_view,
     sentence_practice_view,
+    update_timezone_view,
 )
 
 urlpatterns = [
@@ -45,4 +46,5 @@ urlpatterns = [
     ),
 
     path("sentence-practice/", sentence_practice_view, name="sentence_practice"),
+    path("timezone/update/", views.update_timezone_view, name="update_timezone"),
 ]
