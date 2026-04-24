@@ -130,7 +130,7 @@
             if (savedTimezone === timezone) {
                 return;
             }
-
+	    console.log("CSRF token:", getCookie("csrftoken"));
             fetch("{% url 'update_timezone' %}", {
                 method: "POST",
                 headers: {
