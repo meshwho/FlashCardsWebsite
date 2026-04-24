@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
             name='UserReviewSchedule',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('timezone', models.CharField(default='Europe/Zaporozhye', max_length=64)),
+                ('timezone', models.CharField(default='Europe/Kyiv', max_length=64)),
                 ('is_active', models.BooleanField(default=True)),
                 ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='review_schedule', to=settings.AUTH_USER_MODEL)),
             ],

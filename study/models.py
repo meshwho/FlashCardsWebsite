@@ -140,7 +140,7 @@ class UserReviewSchedule(models.Model):
         on_delete=models.CASCADE,
         related_name="review_schedule",
     )
-    timezone = models.CharField(max_length=64, default="Europe/Zaporozhye")
+    timezone = models.CharField(max_length=64, default="Europe/Kyiv")
     is_active = models.BooleanField(default=True)
 
     def __str__(self):

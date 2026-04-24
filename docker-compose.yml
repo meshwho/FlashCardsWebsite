@@ -27,12 +27,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/ || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 20s
 
   nginx:
     image: nginx:1.27-alpine
@@ -43,8 +37,7 @@ services:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
     depends_on:
-      web:
-        condition: service_healthy
+      - web
     networks:
       - default
       - public_proxy
