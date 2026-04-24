@@ -121,12 +121,53 @@ class ReviewScheduleForm(forms.ModelForm):
 
     class Meta:
         model = UserReviewSchedule
-        fields = ["is_active"]
+        fields = ["timezone", "is_active"]
 
     def __init__(self, *args, **kwargs):
         slots_count = kwargs.pop("slots_count", 3)
+
+        if args:
+            data = args[0]
+            args = args[1:]
+        else:
+            data = kwargs.pop("data", None)
+
+        if data is not None:
+            data = data.copy()
+
+            raw_reviews_per_day = data.get("reviews_per_day", slots_count)
+
+            try:
+                reviews_per_day = int(raw_reviews_per_day)
+            except (TypeError, ValueError):
+                reviews_per_day = slots_count
+
+            reviews_per_day = max(1, min(reviews_per_day, 10))
+            data["reviews_per_day"] = str(reviews_per_day)
+
+            if args:
+                args = (data, *args)
+            else:
+                kwargs["data"] = data
+
         super().__init__(*args, **kwargs)
+
         self.fields["reviews_per_day"].initial = slots_count
+
+        self.fields["timezone"].widget.attrs.update({
+            "class": "form-control",
+            "placeholder": "Europe/Kyiv",
+        })
+
+    def clean_timezone(self):
+        timezone_name = self.cleaned_data.get("timezone")
+
+        try:
+            ZoneInfo(timezone_name)
+        except (ZoneInfoNotFoundError, TypeError, ValueError):
+            raise forms.ValidationError("Enter a valid IANA timezone name.")
+
+        return timezone_name
 
 
 class ReviewSlotForm(forms.Form):

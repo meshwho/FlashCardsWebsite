@@ -20,6 +20,7 @@ from .views import (
     repeat_practice_view,
     sentence_practice_view,
     update_timezone_view,
+    deck_delete_view,
 )
 
 urlpatterns = [
@@ -47,4 +48,5 @@ urlpatterns = [
 
     path("sentence-practice/", sentence_practice_view, name="sentence_practice"),
     path("timezone/update/", update_timezone_view, name="update_timezone"),
+    path("decks/<uuid:deck_id>/delete/", deck_delete_view, name="deck_delete"),
 ]

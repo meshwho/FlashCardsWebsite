@@ -109,6 +109,30 @@
             <a href="{% url 'deck_detail' deck.id %}" class="btn btn-ghost">Cancel</a>
         </div>
     </form>
+    <div class="danger-zone fade-in-3">
+        <div class="danger-zone-content">
+            <div class="danger-zone-icon">!</div>
+
+            <div>
+                <h3 class="danger-zone-title">Delete deck</h3>
+                <p class="danger-zone-text">
+                    Permanently delete this deck and all cards inside it. This action cannot be undone.
+                </p>
+            </div>
+        </div>
+
+        <form
+            method="post"
+            action="{% url 'deck_delete' deck.id %}"
+            onsubmit="return confirm('Delete this deck and all its cards? This action cannot be undone.');"
+            class="danger-zone-form"
+        >
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger btn-sm">
+                Delete deck
+            </button>
+        </form>
+    </div>
 </div>
 
 <script>

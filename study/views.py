@@ -162,12 +162,17 @@ def dashboard_view(request):
                 ReviewSlot.objects.filter(schedule=schedule).delete()
 
                 cleaned_slots = []
-                for idx, form in enumerate(slot_formset.forms, start=1):
-                    slot_time = form.cleaned_data["time"]
+
+                for form in slot_formset.forms:
+                    slot_time = form.cleaned_data.get("time")
+
+                    if not slot_time:
+                        continue
+
                     cleaned_slots.append(
                         ReviewSlot(
                             schedule=schedule,
-                            position=idx,
+                            position=len(cleaned_slots) + 1,
                             time=slot_time,
                         )
                     )
@@ -1219,3 +1224,32 @@ def update_timezone_view(request):
     schedule.save(update_fields=["timezone"])
 
     return JsonResponse({"ok": True, "timezone": timezone_name})
+
+
+@login_required
+@require_POST
+def deck_delete_view(request, deck_id):
+    deck = get_user_deck_or_404(request.user, deck_id)
+
+    deck_title = deck.title
+    deck_id_str = str(deck.id)
+    card_count = deck.cards.count()
+
+    with transaction.atomic():
+        log_action(
+            user=request.user,
+            action=AuditLog.ACTION_DELETE,
+            message=f'Deck "{deck_title}" deleted',
+            entity=deck,
+            details={
+                "deck_id": deck_id_str,
+                "title": deck_title,
+                "deleted_cards_count": card_count,
+            },
+            request=request,
+        )
+
+        deck.delete()
+
+    messages.success(request, f'Deck "{deck_title}" was deleted.')
+    return redirect("deck_list")

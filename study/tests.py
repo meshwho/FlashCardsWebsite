@@ -356,3 +356,57 @@ class ReviewScheduleFormTests(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertIn("timezone", form.errors)
+
+class DeckDeleteViewTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="deck-owner",
+            password="pass123456",
+        )
+        self.other_user = User.objects.create_user(
+            username="other-user",
+            password="pass123456",
+        )
+
+        self.deck = Deck.objects.create(
+            owner=self.user,
+            title="Deck to delete",
+        )
+        self.card = Card.objects.create(
+            deck=self.deck,
+            question="Haus",
+            answer="house",
+            due=timezone.now(),
+        )
+
+        self.client.force_login(self.user)
+
+    def test_user_can_delete_own_deck(self):
+        response = self.client.post(
+            reverse("deck_delete", kwargs={"deck_id": self.deck.id})
+        )
+
+        self.assertRedirects(response, reverse("deck_list"))
+        self.assertFalse(Deck.objects.filter(id=self.deck.id).exists())
+        self.assertFalse(Card.objects.filter(id=self.card.id).exists())
+
+    def test_delete_requires_post(self):
+        response = self.client.get(
+            reverse("deck_delete", kwargs={"deck_id": self.deck.id})
+        )
+
+        self.assertEqual(response.status_code, 405)
+        self.assertTrue(Deck.objects.filter(id=self.deck.id).exists())
+
+    def test_user_cannot_delete_another_users_deck(self):
+        other_deck = Deck.objects.create(
+            owner=self.other_user,
+            title="Other user's deck",
+        )
+
+        response = self.client.post(
+            reverse("deck_delete", kwargs={"deck_id": other_deck.id})
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(Deck.objects.filter(id=other_deck.id).exists())
