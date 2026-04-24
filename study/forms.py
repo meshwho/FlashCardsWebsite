@@ -109,31 +109,24 @@ class ReviewScheduleForm(forms.ModelForm):
     reviews_per_day = forms.IntegerField(
         min_value=1,
         max_value=10,
-        initial=3,
         label="Reviews per day",
+        widget=forms.NumberInput(attrs={
+            "class": "number-input",
+            "inputmode": "numeric",
+            "min": "1",
+            "max": "10",
+            "step": "1",
+        }),
     )
 
     class Meta:
         model = UserReviewSchedule
-        fields = ["timezone", "is_active"]
-        widgets = {
-            "timezone": forms.TextInput(attrs={"class": "form-control"}),
-        }
+        fields = ["is_active"]
 
     def __init__(self, *args, **kwargs):
         slots_count = kwargs.pop("slots_count", 3)
         super().__init__(*args, **kwargs)
         self.fields["reviews_per_day"].initial = slots_count
-
-    def clean_timezone(self):
-        tz_name = (self.cleaned_data.get("timezone") or "").strip()
-
-        try:
-            ZoneInfo(tz_name)
-        except ZoneInfoNotFoundError:
-            raise forms.ValidationError("Enter a valid IANA timezone, e.g. Europe/Berlin.")
-
-        return tz_name
 
 
 class ReviewSlotForm(forms.Form):

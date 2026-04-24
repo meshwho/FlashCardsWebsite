@@ -1135,3 +1135,80 @@ textarea { resize: vertical; min-height: 90px; }
     .practice-done-actions { flex-direction: column; }
     .practice-done-actions .btn { width: 100%; justify-content: center; }
 }
+
+.schedule-field {
+    max-width: 420px;
+    margin-top: 24px;
+}
+
+.schedule-label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #262220;
+}
+
+.number-input-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #e4dcd5;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 8px 22px rgba(38, 34, 32, 0.06);
+}
+
+.number-input {
+    width: 86px;
+    height: 48px;
+    padding: 0 12px;
+    border: 1px solid #d8cec6;
+    border-radius: 12px;
+    background: #faf9f6;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1f1b18;
+    text-align: center;
+    outline: none;
+}
+
+.number-input:focus {
+    border-color: #cf6548;
+    box-shadow: 0 0 0 4px rgba(207, 101, 72, 0.14);
+}
+
+.number-input-hint {
+    color: #77716c;
+    font-size: 0.95rem;
+}
+
+.form-error {
+    margin-top: 8px;
+    color: #b42318;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+    .schedule-field {
+        max-width: 100%;
+    }
+
+    .number-input-card {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .number-input {
+        width: 100%;
+        height: 52px;
+        font-size: 1.35rem;
+    }
+
+    .number-input-hint {
+        font-size: 0.9rem;
+    }
+}
