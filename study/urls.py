@@ -46,5 +46,5 @@ urlpatterns = [
     ),
 
     path("sentence-practice/", sentence_practice_view, name="sentence_practice"),
-    path("timezone/update/", views.update_timezone_view, name="update_timezone"),
+    path("timezone/update/", update_timezone_view, name="update_timezone"),
 ]
