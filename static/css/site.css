@@ -1136,17 +1136,19 @@ textarea { resize: vertical; min-height: 90px; }
     .practice-done-actions .btn { width: 100%; justify-content: center; }
 }
 
+/* ── Review schedule number input ── */
 .schedule-field {
+    width: 100%;
     max-width: 420px;
-    margin-top: 24px;
+    margin-top: 4px;
 }
 
 .schedule-label {
     display: block;
     margin-bottom: 10px;
-    font-weight: 700;
     font-size: 0.95rem;
-    color: #262220;
+    font-weight: 700;
+    color: var(--text);
 }
 
 .number-input-card {
@@ -1155,40 +1157,45 @@ textarea { resize: vertical; min-height: 90px; }
     gap: 14px;
     width: 100%;
     padding: 12px 14px;
-    border: 1px solid #e4dcd5;
-    border-radius: 16px;
-    background: #fff;
-    box-shadow: 0 8px 22px rgba(38, 34, 32, 0.06);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
 }
 
 .number-input {
-    width: 86px;
+    width: 88px;
+    min-width: 88px;
     height: 48px;
     padding: 0 12px;
-    border: 1px solid #d8cec6;
-    border-radius: 12px;
-    background: #faf9f6;
-    font-size: 1.25rem;
+    border: 1px solid var(--border-2);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 1.2rem;
     font-weight: 700;
-    color: #1f1b18;
+    color: var(--text);
     text-align: center;
     outline: none;
+    appearance: textfield;
+    -webkit-appearance: none;
+}
+
+.number-input::-webkit-outer-spin-button,
+.number-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 .number-input:focus {
-    border-color: #cf6548;
-    box-shadow: 0 0 0 4px rgba(207, 101, 72, 0.14);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(201, 100, 66, 0.14);
 }
 
 .number-input-hint {
-    color: #77716c;
     font-size: 0.95rem;
-}
-
-.form-error {
-    margin-top: 8px;
-    color: #b42318;
-    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-2);
 }
 
 @media (max-width: 640px) {
@@ -1197,18 +1204,21 @@ textarea { resize: vertical; min-height: 90px; }
     }
 
     .number-input-card {
-        align-items: flex-start;
         flex-direction: column;
+        align-items: stretch;
         gap: 8px;
+        padding: 14px;
     }
 
     .number-input {
         width: 100%;
+        min-width: 0;
         height: 52px;
-        font-size: 1.35rem;
+        font-size: 1.25rem;
     }
 
     .number-input-hint {
-        font-size: 0.9rem;
+        font-size: 0.95rem;
+        line-height: 1.35;
     }
 }
