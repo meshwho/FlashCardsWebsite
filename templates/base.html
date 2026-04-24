@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}FlashCards{% endblock %}</title>
 
-    <link rel="stylesheet" href="{% static 'css/site.css' %}">
+    <link rel="stylesheet" href="{% static 'css/site.css' %}?v=20260424-2">
 
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -90,75 +90,94 @@
     </main>
 
     {% if user.is_authenticated %}
-    <script>
-        (function () {
-            const toggleBtn = document.getElementById("menuToggle");
-            const menu = document.getElementById("mobileMenu");
+        <form id="csrf-token-source" style="display:none;">
+            {% csrf_token %}
+        </form>
 
-            if (!toggleBtn || !menu) return;
+        <script>
+            (function () {
+                const toggleBtn = document.getElementById("menuToggle");
+                const menu = document.getElementById("mobileMenu");
 
-            toggleBtn.addEventListener("click", function () {
-                const isOpen = menu.classList.toggle("mobile-open");
-                toggleBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
-                toggleBtn.classList.toggle("is-open", isOpen);
-            });
-
-            document.addEventListener("click", function (event) {
-                const clickedInsideMenu = menu.contains(event.target);
-                const clickedToggle = toggleBtn.contains(event.target);
-
-                if (!clickedInsideMenu && !clickedToggle) {
-                    menu.classList.remove("mobile-open");
-                    toggleBtn.classList.remove("is-open");
-                    toggleBtn.setAttribute("aria-expanded", "false");
-                }
-            });
-        })();
-    </script>
-
-    <script>
-        (function () {
-            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-            if (!timezone) {
-                return;
-            }
-
-            const storageKey = "flashcards_timezone_{{ user.id }}";
-            const savedTimezone = localStorage.getItem(storageKey);
-
-            if (savedTimezone === timezone) {
-                return;
-            }
-
-            fetch("{% url 'update_timezone' %}", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCookie("csrftoken")
-                },
-                body: JSON.stringify({ timezone: timezone })
-            })
-            .then(function (response) {
-                if (!response.ok) {
-                    console.warn("Failed to update timezone");
+                if (!toggleBtn || !menu) {
                     return;
                 }
 
-                localStorage.setItem(storageKey, timezone);
-            })
-            .catch(function (err) {
-                console.warn("Timezone request error:", err);
-            });
+                toggleBtn.addEventListener("click", function () {
+                    const isOpen = menu.classList.toggle("mobile-open");
+                    toggleBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+                    toggleBtn.classList.toggle("is-open", isOpen);
+                });
 
-            function getCookie(name) {
-                const value = `; ${document.cookie}`;
-                const parts = value.split(`; ${name}=`);
-                if (parts.length === 2) return parts.pop().split(";").shift();
-                return "";
-            }
-        })();
-    </script>
+                document.addEventListener("click", function (event) {
+                    const clickedInsideMenu = menu.contains(event.target);
+                    const clickedToggle = toggleBtn.contains(event.target);
+
+                    if (!clickedInsideMenu && !clickedToggle) {
+                        menu.classList.remove("mobile-open");
+                        toggleBtn.classList.remove("is-open");
+                        toggleBtn.setAttribute("aria-expanded", "false");
+                    }
+                });
+            })();
+        </script>
+
+        <script>
+            (function () {
+                const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+                if (!timezone) {
+                    return;
+                }
+
+                const storageKey = "flashcards_timezone_{{ user.id }}";
+                const savedTimezone = localStorage.getItem(storageKey);
+
+                if (savedTimezone === timezone) {
+                    return;
+                }
+
+                const csrfToken = getCsrfToken();
+
+                if (!csrfToken) {
+                    console.warn("CSRF token is unavailable. Timezone update skipped.");
+                    return;
+                }
+
+                fetch("{% url 'update_timezone' %}", {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrfToken
+                    },
+                    body: JSON.stringify({ timezone: timezone })
+                })
+                .then(function (response) {
+                    if (!response.ok) {
+                        console.warn("Failed to update timezone");
+                        return;
+                    }
+
+                    localStorage.setItem(storageKey, timezone);
+                })
+                .catch(function (err) {
+                    console.warn("Timezone request error:", err);
+                });
+
+                function getCsrfToken() {
+                    const input = document.querySelector(
+                        '#csrf-token-source input[name="csrfmiddlewaretoken"]'
+                    );
+
+                    if (input && input.value) {
+                        return input.value;
+                    }
+
+                    return "";
+                }
+            })();
+        </script>
     {% endif %}
 </body>
 </html>
