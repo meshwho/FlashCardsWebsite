@@ -69,11 +69,22 @@
         <input type="hidden" name="dashboard_action" value="save_schedule">
 
         <div class="form-group">
-            <label for="{{ schedule_form.reviews_per_day.id_for_label }}">Reviews per day</label>
-            {{ schedule_form.reviews_per_day }}
-            {% if schedule_form.reviews_per_day.errors %}
-                {{ schedule_form.reviews_per_day.errors }}
-            {% endif %}
+            <div class="schedule-field">
+                <label for="{{ schedule_form.reviews_per_day.id_for_label }}" class="schedule-label">
+                    Reviews per day
+                </label>
+
+                <div class="number-input-card">
+                    {{ schedule_form.reviews_per_day }}
+                    <span class="number-input-hint">daily review sessions</span>
+                </div>
+
+                {% if schedule_form.reviews_per_day.errors %}
+                    <div class="form-error">
+                        {{ schedule_form.reviews_per_day.errors }}
+                    </div>
+                {% endif %}
+            </div>
         </div>
 
         <div class="form-group schedule-inline-check">
