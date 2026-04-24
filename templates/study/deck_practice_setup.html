@@ -47,6 +47,7 @@
                 <button type="submit" class="btn btn-primary btn-sm">Start</button>
             </div>
         </form>
+        {% if has_article_cards %}
         <form method="post" class="deck-card">
             {% csrf_token %}
             <input type="hidden" name="mode" value="articles">
@@ -67,6 +68,7 @@
                 <button type="submit" class="btn btn-primary btn-sm">Start</button>
             </div>
         </form>
+        {% endif %}
     </div>
 {% endif %}
 {% endblock %}
