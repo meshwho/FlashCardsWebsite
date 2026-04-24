@@ -5,20 +5,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}FlashCards{% endblock %}</title>
+
+    <link rel="stylesheet" href="{% static 'css/site.css' %}">
+
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="FlashCards">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#faf9f6">
 
     <link rel="manifest" href="{% static 'favicon/site.webmanifest' %}">
-    <link rel="apple-touch-icon" href="{% static 'favicon/apple-touch-icon.png' %}">
-    <link rel="stylesheet" href="{% static 'css/site.css' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'favicon/apple-touch-icon.png' %}">
     <link rel="icon" type="image/x-icon" href="{% static 'favicon/favicon.ico' %}">
     <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicon/favicon-16x16.png' %}">
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon/favicon-32x32.png' %}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'favicon/apple-touch-icon.png' %}">
-    <link rel="manifest" href="{% static 'favicon/site.webmanifest' %}">
-    <meta name="theme-color" content="#faf9f6">
+
     {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -29,8 +30,6 @@
 
                 {% if user.is_authenticated %}
                     <div class="nav-right">
-
-
                         <form method="post" action="{% url 'logout' %}" class="nav-logout-desktop">
                             {% csrf_token %}
                             <button type="submit" class="btn-logout">Log out</button>
@@ -114,6 +113,50 @@
                     toggleBtn.setAttribute("aria-expanded", "false");
                 }
             });
+        })();
+    </script>
+
+    <script>
+        (function () {
+            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+            if (!timezone) {
+                return;
+            }
+
+            const storageKey = "flashcards_timezone_{{ user.id }}";
+            const savedTimezone = localStorage.getItem(storageKey);
+
+            if (savedTimezone === timezone) {
+                return;
+            }
+
+            fetch("{% url 'update_timezone' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                body: JSON.stringify({ timezone: timezone })
+            })
+            .then(function (response) {
+                if (!response.ok) {
+                    console.warn("Failed to update timezone");
+                    return;
+                }
+
+                localStorage.setItem(storageKey, timezone);
+            })
+            .catch(function (err) {
+                console.warn("Timezone request error:", err);
+            });
+
+            function getCookie(name) {
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) return parts.pop().split(";").shift();
+                return "";
+            }
         })();
     </script>
     {% endif %}

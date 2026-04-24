@@ -70,6 +70,11 @@ from .sentence_session import (
 from .services import FSRSService
 from audit.models import AuditLog
 from audit.utils import log_action
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+import json
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from .models import UserReviewSchedule
 
 
 def _get_posted_non_negative_int(request, key, default=0):
@@ -1191,3 +1196,26 @@ def sentence_practice_view(request):
             "source_mode": source_mode,
         },
     )
+
+@login_required
+@require_POST
+def update_timezone_view(request):
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        timezone_name = data.get("timezone")
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
+
+    if not timezone_name:
+        return JsonResponse({"ok": False, "error": "Missing timezone"}, status=400)
+
+    try:
+        ZoneInfo(timezone_name)
+    except ZoneInfoNotFoundError:
+        return JsonResponse({"ok": False, "error": "Invalid timezone"}, status=400)
+
+    schedule, _ = UserReviewSchedule.objects.get_or_create(user=request.user)
+    schedule.timezone = timezone_name
+    schedule.save(update_fields=["timezone"])
+
+    return JsonResponse({"ok": True, "timezone": timezone_name})
