@@ -1300,3 +1300,19 @@ textarea { resize: vertical; min-height: 90px; }
         justify-content: center;
     }
 }
+
+/* ── Notification settings ── */
+.notification-settings-card {
+    margin-top: 16px;
+}
+
+.notification-settings-text {
+    margin: 8px 0 14px;
+    font-size: 0.9375rem;
+}
+
+.notification-status {
+    margin-top: 10px;
+    font-size: 0.875rem;
+    color: var(--text-2);
+}

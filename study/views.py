@@ -1,11 +1,11 @@
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Count
 from django.shortcuts import redirect, render
 from django.utils import timezone
-
 from .article_logic import is_correct_article_choice, split_article_and_word
 from .deck_metrics import enrich_deck_with_memory_score, enrich_decks_with_memory_scores
 from .forms import (
@@ -17,7 +17,7 @@ from .forms import (
     SentencePracticeForm,
     SignUpForm,
 )
-from .models import Card, Deck, ReviewLog, ReviewSlot, SentenceAttempt
+from .models import Card, Deck, PushSubscription, ReviewLog, ReviewSlot, SentenceAttempt
 from .practice_logic import (
     MAX_HINTS as PRACTICE_MAX_HINTS,
     get_hint_text,
@@ -1253,3 +1253,43 @@ def deck_delete_view(request, deck_id):
 
     messages.success(request, f'Deck "{deck_title}" was deleted.')
     return redirect("deck_list")
+
+
+@login_required
+def push_config_view(request):
+    return JsonResponse({
+        "publicKey": settings.WEB_PUSH_VAPID_PUBLIC_KEY,
+    })
+
+
+@login_required
+@require_POST
+def save_push_subscription_view(request):
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"error": "Invalid JSON."}, status=400)
+
+    endpoint = payload.get("endpoint")
+    keys = payload.get("keys") or {}
+    p256dh = keys.get("p256dh")
+    auth = keys.get("auth")
+
+    if not endpoint or not p256dh or not auth:
+        return JsonResponse({"error": "Invalid push subscription."}, status=400)
+
+    subscription, created = PushSubscription.objects.update_or_create(
+        endpoint=endpoint,
+        defaults={
+            "user": request.user,
+            "p256dh": p256dh,
+            "auth": auth,
+            "user_agent": request.META.get("HTTP_USER_AGENT", ""),
+        },
+    )
+
+    return JsonResponse({
+        "ok": True,
+        "created": created,
+        "subscription_id": subscription.id,
+    })
