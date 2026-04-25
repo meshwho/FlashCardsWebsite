@@ -128,8 +128,16 @@ def dashboard_view(request):
     )
 
     if request.method == "POST":
+        schedule_post_data = request.POST.copy()
+
+        # The dashboard does not let the user edit timezone directly.
+        # Timezone is updated separately by /timezone/update/.
+        # Therefore we preserve the current schedule timezone here,
+        # otherwise ReviewScheduleForm becomes invalid because timezone is required.
+        schedule_post_data["timezone"] = schedule.timezone
+
         schedule_form = ReviewScheduleForm(
-            request.POST,
+            schedule_post_data,
             instance=schedule,
             slots_count=len(existing_slots) or 3,
         )
@@ -202,6 +210,11 @@ def dashboard_view(request):
                 f"Schedule saved. Updated {updated_count} card due times."
             )
             return redirect("dashboard")
+        else:
+            messages.error(
+                request,
+                "Schedule was not saved. Please check the review times and try again."
+            )
     else:
         slot_times = get_user_review_slots(request.user)
 

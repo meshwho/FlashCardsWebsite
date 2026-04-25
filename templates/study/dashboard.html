@@ -67,6 +67,7 @@
     <form method="post" id="schedule-form">
         {% csrf_token %}
         <input type="hidden" name="dashboard_action" value="save_schedule">
+        {{ schedule_form.timezone.as_hidden }}
 
         <div class="form-group">
             <div class="schedule-field">
@@ -107,7 +108,7 @@
                                 <input
                                     type="time"
                                     name="slot_{{ forloop.counter0 }}_time"
-                                    value="{{ form.initial.time|time:'H:i' }}"
+                                    value="{% if form.is_bound %}{{ form.time.value|default:'' }}{% else %}{{ form.initial.time|time:'H:i' }}{% endif %}"
                                     class="time-input"
                                     required
                                 >
