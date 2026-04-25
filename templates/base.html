@@ -179,5 +179,248 @@
             })();
         </script>
     {% endif %}
+    {% if user.is_authenticated %}
+    <script>
+        (function () {
+            if (!("serviceWorker" in navigator)) {
+                console.warn("Service workers are not supported in this browser.");
+                return;
+            }
+
+            window.addEventListener("load", function () {
+                navigator.serviceWorker.getRegistrations()
+                    .then(function (registrations) {
+                        const cleanupTasks = registrations.map(function (registration) {
+                            if (registration.scope.includes("/static/js/")) {
+                                console.log("Unregistering old service worker:", registration.scope);
+                                return registration.unregister();
+                            }
+
+                            return Promise.resolve(false);
+                        });
+
+                        return Promise.all(cleanupTasks);
+                    })
+                    .then(function () {
+                        return navigator.serviceWorker.register("{% url 'service_worker' %}", {
+                            scope: "/"
+                        });
+                    })
+                    .then(function (registration) {
+                        console.log("Service worker registered:", registration.scope);
+                    })
+                    .catch(function (error) {
+                        console.warn("Service worker registration failed:", error);
+                    });
+            });
+        })();
+    </script>
+    <script>
+        (function () {
+            const button = document.getElementById("enable-notifications-btn");
+            const status = document.getElementById("notification-status");
+
+            if (!button || !status) {
+                return;
+            }
+
+            if (!("Notification" in window)) {
+                button.disabled = true;
+                status.textContent = "Notifications are not supported in this browser.";
+                return;
+            }
+
+            if (!("serviceWorker" in navigator)) {
+                button.disabled = true;
+                status.textContent = "Service workers are not supported in this browser.";
+                return;
+            }
+
+            updateNotificationStatus();
+
+            button.addEventListener("click", function () {
+                Notification.requestPermission()
+                    .then(function (permission) {
+                        updateNotificationStatus();
+
+                        if (permission === "granted") {
+                            status.textContent = "Notifications are enabled for this device.";
+                        } else if (permission === "denied") {
+                            status.textContent = "Notifications are blocked. Enable them in browser settings.";
+                        } else {
+                            status.textContent = "Notifications were not enabled.";
+                        }
+                    })
+                    .catch(function (error) {
+                        console.warn("Notification permission request failed:", error);
+                        status.textContent = "Could not request notification permission.";
+                    });
+            });
+
+            function updateNotificationStatus() {
+                if (Notification.permission === "granted") {
+                    button.disabled = true;
+                    status.textContent = "Notifications are already enabled for this device.";
+                    return;
+                }
+
+                if (Notification.permission === "denied") {
+                    button.disabled = true;
+                    status.textContent = "Notifications are blocked. Enable them in browser settings.";
+                    return;
+                }
+
+                button.disabled = false;
+                status.textContent = "Notifications are not enabled yet.";
+            }
+        })();
+    </script>
+    <script>
+        (function () {
+            const button = document.getElementById("enable-notifications-btn");
+            const status = document.getElementById("notification-status");
+
+            if (!button || !status) {
+                return;
+            }
+
+            if (!("Notification" in window)) {
+                button.disabled = true;
+                status.textContent = "Notifications are not supported in this browser.";
+                return;
+            }
+
+            if (!("serviceWorker" in navigator)) {
+                button.disabled = true;
+                status.textContent = "Service workers are not supported in this browser.";
+                return;
+            }
+
+            if (!("PushManager" in window)) {
+                button.disabled = true;
+                status.textContent = "Push notifications are not supported in this browser.";
+                return;
+            }
+
+            updateNotificationStatus();
+
+            button.addEventListener("click", function () {
+                button.disabled = true;
+                status.textContent = "Preparing notifications...";
+
+                navigator.serviceWorker.ready
+                    .then(function (registration) {
+                        return Notification.requestPermission()
+                            .then(function (permission) {
+                                if (permission !== "granted") {
+                                    throw new Error("Notification permission was not granted.");
+                                }
+
+                                return fetch("{% url 'push_config' %}", {
+                                    method: "GET",
+                                    credentials: "same-origin"
+                                });
+                            })
+                            .then(function (response) {
+                                if (!response.ok) {
+                                    throw new Error("Could not load push configuration.");
+                                }
+
+                                return response.json();
+                            })
+                            .then(function (config) {
+                                if (!config.publicKey) {
+                                    throw new Error("VAPID public key is missing.");
+                                }
+
+                                return registration.pushManager.subscribe({
+                                    userVisibleOnly: true,
+                                    applicationServerKey: urlBase64ToUint8Array(config.publicKey)
+                                });
+                            });
+                    })
+                    .then(function (subscription) {
+                        return fetch("{% url 'push_subscribe' %}", {
+                            method: "POST",
+                            credentials: "same-origin",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRFToken": getCsrfToken()
+                            },
+                            body: JSON.stringify(subscription)
+                        });
+                    })
+                    .then(function (response) {
+                        if (!response.ok) {
+                            throw new Error("Could not save push subscription.");
+                        }
+
+                        return response.json();
+                    })
+                    .then(function () {
+                        status.textContent = "Notifications are enabled for this device.";
+                        button.disabled = true;
+                    })
+                    .catch(function (error) {
+                        console.warn("Push setup failed:", error);
+
+                        if (Notification.permission === "denied") {
+                            status.textContent = "Notifications are blocked. Enable them in browser settings.";
+                            button.disabled = true;
+                            return;
+                        }
+
+                        status.textContent = "Could not enable notifications. Please try again.";
+                        button.disabled = false;
+                    });
+            });
+
+            function updateNotificationStatus() {
+                if (Notification.permission === "granted") {
+                    status.textContent = "Notifications permission is granted. Click the button to register this device.";
+                    button.disabled = false;
+                    return;
+                }
+
+                if (Notification.permission === "denied") {
+                    status.textContent = "Notifications are blocked. Enable them in browser settings.";
+                    button.disabled = true;
+                    return;
+                }
+
+                status.textContent = "Notifications are not enabled yet.";
+                button.disabled = false;
+            }
+
+            function urlBase64ToUint8Array(base64String) {
+                const padding = "=".repeat((4 - base64String.length % 4) % 4);
+                const base64 = (base64String + padding)
+                    .replace(/-/g, "+")
+                    .replace(/_/g, "/");
+
+                const rawData = window.atob(base64);
+                const outputArray = new Uint8Array(rawData.length);
+
+                for (let i = 0; i < rawData.length; ++i) {
+                    outputArray[i] = rawData.charCodeAt(i);
+                }
+
+                return outputArray;
+            }
+
+            function getCsrfToken() {
+                const input = document.querySelector(
+                    '#csrf-token-source input[name="csrfmiddlewaretoken"]'
+                );
+
+                if (input && input.value) {
+                    return input.value;
+                }
+
+                return "";
+            }
+        })();
+    </script>
+    {% endif %}
 </body>
 </html>

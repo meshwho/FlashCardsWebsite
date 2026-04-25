@@ -201,3 +201,51 @@ class SentenceAttempt(models.Model):
 
     def __str__(self):
         return f"SentenceAttempt({self.user_id}, {self.card_id}, {self.source_mode})"
+
+
+class PushSubscription(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="push_subscriptions",
+    )
+    endpoint = models.URLField(max_length=1000, unique=True)
+    p256dh = models.TextField()
+    auth = models.TextField()
+    user_agent = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return f"PushSubscription(user={self.user_id}, endpoint={self.endpoint[:60]})"
+
+class PushReminderLog(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="push_reminder_logs",
+    )
+    schedule_date = models.DateField()
+    slot_position = models.PositiveSmallIntegerField()
+    slot_time = models.TimeField()
+    due_count = models.PositiveIntegerField(default=0)
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-sent_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "schedule_date", "slot_position"],
+                name="unique_push_reminder_per_user_date_slot",
+            )
+        ]
+
+    def __str__(self):
+        return (
+            f"PushReminderLog(user={self.user_id}, "
+            f"date={self.schedule_date}, "
+            f"slot={self.slot_position})"
+        )
