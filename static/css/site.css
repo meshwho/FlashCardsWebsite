@@ -1306,11 +1306,6 @@ textarea { resize: vertical; min-height: 90px; }
     margin-top: 16px;
 }
 
-.notification-settings-text {
-    margin: 8px 0 14px;
-    font-size: 0.9375rem;
-}
-
 .notification-status {
     margin-top: 10px;
     font-size: 0.875rem;
@@ -1577,17 +1572,10 @@ body::-webkit-scrollbar {
 }
 
 @media (max-width: 640px) {
-    .settings-head {
-        align-items: flex-start;
-    }
 
     .notification-switch {
         margin-top: 2px;
         flex-shrink: 0;
-    }
-
-    .notification-status {
-        font-size: 0.9rem;
     }
 }
 
@@ -1596,9 +1584,48 @@ body::-webkit-scrollbar {
 }
 
 @media (max-width: 640px) {
-    .notifications-head {
+
+
+    .notifications-card {
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+
+    .notification-switch {
+        flex-shrink: 0;
+        margin-top: 0;
+    }
+}
+
+.notifications-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.notifications-copy {
+    min-width: 0;
+    flex: 1;
+}
+
+.notification-status {
+    color: var(--text-2);
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.notification-switch {
+    flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+    .notifications-row {
+        flex-direction: row;
         align-items: center;
-        gap: 12px;
+        justify-content: space-between;
+        flex-wrap: nowrap;
+        gap: 14px;
     }
 
     .notifications-subtitle,
@@ -1611,8 +1638,11 @@ body::-webkit-scrollbar {
         padding-bottom: 20px;
     }
 
+    .notifications-card h2 {
+        margin-bottom: 0 !important;
+    }
+
     .notification-switch {
-        flex-shrink: 0;
         margin-top: 0;
     }
 }
