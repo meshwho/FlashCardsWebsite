@@ -216,188 +216,267 @@
         </script>
 
         <script>
-            (function () {
-                const button = document.getElementById("enable-notifications-btn");
-                const status = document.getElementById("notification-status");
+        (function () {
+            const toggle = document.getElementById("enable-notifications-toggle");
+            const status = document.getElementById("notification-status");
 
-                if (!button || !status) {
+            if (!toggle || !status) {
+                return;
+            }
+
+            const isIOS =
+                /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+                (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+            const isStandalone =
+                window.matchMedia("(display-mode: standalone)").matches ||
+                window.navigator.standalone === true;
+
+            let isSyncing = false;
+
+            syncNotificationToggle();
+
+            toggle.addEventListener("change", async function () {
+                if (isSyncing) {
                     return;
                 }
 
-                const isIOS =
-                    /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-                    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-
-                const isStandalone =
-                    window.matchMedia("(display-mode: standalone)").matches ||
-                    window.navigator.standalone === true;
-
-                updateNotificationStatus();
-
-                button.addEventListener("click", function () {
-                    enablePushNotifications();
-                });
-
-                async function enablePushNotifications() {
-                    button.disabled = true;
-                    status.textContent = "Preparing notifications...";
-
-                    try {
-                        if (isIOS && !isStandalone) {
-                            throw new Error(
-                                "On iPhone, add FlashCards to the Home Screen and open it from the app icon to enable notifications."
-                            );
-                        }
-
-                        if (!("Notification" in window)) {
-                            throw new Error("Notifications are not supported in this browser.");
-                        }
-
-                        if (!("serviceWorker" in navigator)) {
-                            throw new Error("Service workers are not supported in this browser.");
-                        }
-
-                        if (!("PushManager" in window)) {
-                            throw new Error("Push notifications are not supported in this browser/context.");
-                        }
-
-                        const registration = await navigator.serviceWorker.ready;
-
-                        let permission = Notification.permission;
-
-                        if (permission !== "granted") {
-                            permission = await Notification.requestPermission();
-                        }
-
-                        if (permission !== "granted") {
-                            throw new Error("Notification permission was not granted.");
-                        }
-
-                        let subscription = await registration.pushManager.getSubscription();
-
-                        if (!subscription) {
-                            const configResponse = await fetch("{% url 'push_config' %}", {
-                                method: "GET",
-                                credentials: "same-origin"
-                            });
-
-                            if (!configResponse.ok) {
-                                throw new Error("Could not load push configuration.");
-                            }
-
-                            const config = await configResponse.json();
-
-                            if (!config.publicKey) {
-                                throw new Error("VAPID public key is missing.");
-                            }
-
-                            subscription = await registration.pushManager.subscribe({
-                                userVisibleOnly: true,
-                                applicationServerKey: urlBase64ToUint8Array(config.publicKey)
-                            });
-                        }
-
-                        const saveResponse = await fetch("{% url 'push_subscribe' %}", {
-                            method: "POST",
-                            credentials: "same-origin",
-                            headers: {
-                                "Content-Type": "application/json",
-                                "X-CSRFToken": getCsrfToken()
-                            },
-                            body: JSON.stringify(subscription)
-                        });
-
-                        if (!saveResponse.ok) {
-                            throw new Error("Could not save push subscription on the server.");
-                        }
-
-                        status.textContent = "Notifications are enabled for this device.";
-                        button.disabled = true;
-                    } catch (error) {
-                        console.warn("Push setup failed:", error);
-
-                        status.textContent = error.message || "Could not enable notifications. Please try again.";
-
-                        if ("Notification" in window && Notification.permission === "denied") {
-                            button.disabled = true;
-                        } else {
-                            button.disabled = false;
-                        }
-                    }
+                if (toggle.checked) {
+                    await enablePushNotifications();
+                } else {
+                    await disablePushNotifications();
                 }
+            });
 
-                function updateNotificationStatus() {
+            async function syncNotificationToggle() {
+                isSyncing = true;
+
+                try {
                     if (isIOS && !isStandalone) {
-                        button.disabled = false;
+                        toggle.checked = false;
+                        toggle.disabled = true;
                         status.textContent =
                             "On iPhone, add FlashCards to the Home Screen and open it from the app icon to enable notifications.";
                         return;
                     }
 
                     if (!("Notification" in window)) {
-                        button.disabled = true;
+                        toggle.checked = false;
+                        toggle.disabled = true;
                         status.textContent = "Notifications are not supported in this browser.";
                         return;
                     }
 
                     if (!("serviceWorker" in navigator)) {
-                        button.disabled = true;
+                        toggle.checked = false;
+                        toggle.disabled = true;
                         status.textContent = "Service workers are not supported in this browser.";
                         return;
                     }
 
                     if (!("PushManager" in window)) {
-                        button.disabled = true;
+                        toggle.checked = false;
+                        toggle.disabled = true;
                         status.textContent = "Push notifications are not supported in this browser/context.";
                         return;
                     }
 
+                    const registration = await navigator.serviceWorker.ready;
+                    const subscription = await registration.pushManager.getSubscription();
+
+                    if (subscription) {
+                        toggle.checked = true;
+                        toggle.disabled = false;
+                        status.textContent = "Notifications are enabled for this device.";
+                        return;
+                    }
+
+                    toggle.checked = false;
+                    toggle.disabled = false;
+
                     if (Notification.permission === "denied") {
-                        button.disabled = true;
                         status.textContent = "Notifications are blocked. Enable them in browser settings.";
                         return;
                     }
 
                     if (Notification.permission === "granted") {
-                        button.disabled = false;
-                        status.textContent =
-                            "Notifications permission is granted. Click the button to register this device.";
+                        status.textContent = "Notifications permission is granted. Turn the switch on to register this device.";
                         return;
                     }
 
-                    button.disabled = false;
-                    status.textContent = "Notifications are not enabled yet.";
+                    status.textContent = "Notifications are off for this device.";
+                } catch (error) {
+                    console.warn("Notification toggle sync failed:", error);
+                    toggle.checked = false;
+                    toggle.disabled = false;
+                    status.textContent = "Could not detect notification status.";
+                } finally {
+                    isSyncing = false;
                 }
+            }
 
-                function urlBase64ToUint8Array(base64String) {
-                    const padding = "=".repeat((4 - base64String.length % 4) % 4);
-                    const base64 = (base64String + padding)
-                        .replace(/-/g, "+")
-                        .replace(/_/g, "/");
+            async function enablePushNotifications() {
+                toggle.disabled = true;
+                status.textContent = "Enabling notifications...";
 
-                    const rawData = window.atob(base64);
-                    const outputArray = new Uint8Array(rawData.length);
-
-                    for (let i = 0; i < rawData.length; ++i) {
-                        outputArray[i] = rawData.charCodeAt(i);
+                try {
+                    if (isIOS && !isStandalone) {
+                        throw new Error(
+                            "On iPhone, add FlashCards to the Home Screen and open it from the app icon to enable notifications."
+                        );
                     }
 
-                    return outputArray;
-                }
-
-                function getCsrfToken() {
-                    const input = document.querySelector(
-                        '#csrf-token-source input[name="csrfmiddlewaretoken"]'
-                    );
-
-                    if (input && input.value) {
-                        return input.value;
+                    if (!("Notification" in window)) {
+                        throw new Error("Notifications are not supported in this browser.");
                     }
 
-                    return "";
+                    if (!("serviceWorker" in navigator)) {
+                        throw new Error("Service workers are not supported in this browser.");
+                    }
+
+                    if (!("PushManager" in window)) {
+                        throw new Error("Push notifications are not supported in this browser/context.");
+                    }
+
+                    const registration = await navigator.serviceWorker.ready;
+
+                    let permission = Notification.permission;
+
+                    if (permission !== "granted") {
+                        permission = await Notification.requestPermission();
+                    }
+
+                    if (permission !== "granted") {
+                        throw new Error("Notification permission was not granted.");
+                    }
+
+                    let subscription = await registration.pushManager.getSubscription();
+
+                    if (!subscription) {
+                        const configResponse = await fetch("{% url 'push_config' %}", {
+                            method: "GET",
+                            credentials: "same-origin"
+                        });
+
+                        if (!configResponse.ok) {
+                            throw new Error("Could not load push configuration.");
+                        }
+
+                        const config = await configResponse.json();
+
+                        if (!config.publicKey) {
+                            throw new Error("VAPID public key is missing.");
+                        }
+
+                        subscription = await registration.pushManager.subscribe({
+                            userVisibleOnly: true,
+                            applicationServerKey: urlBase64ToUint8Array(config.publicKey)
+                        });
+                    }
+
+                    const saveResponse = await fetch("{% url 'push_subscribe' %}", {
+                        method: "POST",
+                        credentials: "same-origin",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": getCsrfToken()
+                        },
+                        body: JSON.stringify(subscription)
+                    });
+
+                    if (!saveResponse.ok) {
+                        throw new Error("Could not save push subscription on the server.");
+                    }
+
+                    toggle.checked = true;
+                    status.textContent = "Notifications are enabled for this device.";
+                } catch (error) {
+                    console.warn("Push enable failed:", error);
+                    toggle.checked = false;
+                    status.textContent =
+                        error.message || "Could not enable notifications. Please try again.";
+                } finally {
+                    toggle.disabled = false;
                 }
-            })();
-        </script>
+            }
+
+            async function disablePushNotifications() {
+                toggle.disabled = true;
+                status.textContent = "Disabling notifications...";
+
+                try {
+                    if (!("serviceWorker" in navigator)) {
+                        throw new Error("Service workers are not supported in this browser.");
+                    }
+
+                    const registration = await navigator.serviceWorker.ready;
+                    const subscription = await registration.pushManager.getSubscription();
+
+                    if (!subscription) {
+                        toggle.checked = false;
+                        status.textContent = "Notifications are already off for this device.";
+                        return;
+                    }
+
+                    const endpoint = subscription.endpoint;
+
+                    try {
+                        await fetch("{% url 'push_unsubscribe' %}", {
+                            method: "POST",
+                            credentials: "same-origin",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRFToken": getCsrfToken()
+                            },
+                            body: JSON.stringify({ endpoint: endpoint })
+                        });
+                    } catch (error) {
+                        console.warn("Server unsubscribe failed:", error);
+                    }
+
+                    await subscription.unsubscribe();
+
+                    toggle.checked = false;
+                    status.textContent = "Notifications are off for this device.";
+                } catch (error) {
+                    console.warn("Push disable failed:", error);
+                    toggle.checked = true;
+                    status.textContent =
+                        error.message || "Could not disable notifications. Please try again.";
+                } finally {
+                    toggle.disabled = false;
+                }
+            }
+
+            function urlBase64ToUint8Array(base64String) {
+                const padding = "=".repeat((4 - base64String.length % 4) % 4);
+                const base64 = (base64String + padding)
+                    .replace(/-/g, "+")
+                    .replace(/_/g, "/");
+
+                const rawData = window.atob(base64);
+                const outputArray = new Uint8Array(rawData.length);
+
+                for (let i = 0; i < rawData.length; ++i) {
+                    outputArray[i] = rawData.charCodeAt(i);
+                }
+
+                return outputArray;
+            }
+
+            function getCsrfToken() {
+                const input = document.querySelector(
+                    '#csrf-token-source input[name="csrfmiddlewaretoken"]'
+                );
+
+                if (input && input.value) {
+                    return input.value;
+                }
+
+                return "";
+            }
+        })();
+    </script>
     {% endif %}
 </body>
 </html>

@@ -21,20 +21,31 @@
     </div>
 </div>
 <div class="card fade-in-2 notification-settings-card" style="margin-bottom: 24px;">
-    <div class="page-header" style="margin-bottom: 18px;">
-        <h2>Notifications</h2>
-        <p class="subtitle">
-            Enable review reminders for this device.
-        </p>
-    </div>
+    <div class="notification-toggle-card">
+        <div class="notification-toggle-content">
+            <div class="notification-toggle-copy">
+                <div class="notification-toggle-heading">
+                    <h2>Notifications</h2>
+                    <p class="subtitle">
+                        Enable review reminders for this device.
+                    </p>
+                </div>
 
-    <div class="stack-actions">
-        <button type="button" class="btn btn-secondary btn-sm" id="enable-notifications-btn">
-            Enable notifications
-        </button>
-    </div>
+                <p class="notification-status" id="notification-status">
+                    Notifications are not enabled yet.
+                </p>
+            </div>
 
-    <p class="notification-status" id="notification-status"></p>
+            <div class="notification-toggle-control">
+                <label class="notification-switch" for="enable-notifications-toggle">
+                    <input type="checkbox" id="enable-notifications-toggle">
+                    <span class="notification-switch-track">
+                        <span class="notification-switch-thumb"></span>
+                    </span>
+                </label>
+            </div>
+        </div>
+    </div>
 </div>
 <div class="stats-row fade-in-2">
     <div class="stat-card">

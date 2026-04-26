@@ -23,6 +23,7 @@ from .views import (
     deck_delete_view,
     push_config_view,
     save_push_subscription_view,
+    delete_push_subscription_view,
 )
 
 urlpatterns = [
@@ -53,4 +54,5 @@ urlpatterns = [
     path("decks/<uuid:deck_id>/delete/", deck_delete_view, name="deck_delete"),
     path("push/config/", push_config_view, name="push_config"),
     path("push/subscribe/", save_push_subscription_view, name="push_subscribe"),
+    path("push/unsubscribe/", delete_push_subscription_view, name="push_unsubscribe"),
 ]

@@ -1338,3 +1338,26 @@ def save_push_subscription_view(request):
         "created": created,
         "subscription_id": subscription.id,
     })
+
+@login_required
+@require_POST
+def delete_push_subscription_view(request):
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"error": "Invalid JSON."}, status=400)
+
+    endpoint = (payload.get("endpoint") or "").strip()
+
+    if not endpoint:
+        return JsonResponse({"error": "Endpoint is required."}, status=400)
+
+    deleted_count, _ = PushSubscription.objects.filter(
+        user=request.user,
+        endpoint=endpoint,
+    ).delete()
+
+    return JsonResponse({
+        "ok": True,
+        "deleted": deleted_count,
+    })
