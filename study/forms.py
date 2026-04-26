@@ -4,15 +4,31 @@ from django.contrib.auth.models import User
 from django.forms import BaseInlineFormSet, inlineformset_factory
 from django.forms import formset_factory
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-
+from django.contrib.auth import get_user_model
 from .models import Card, Deck, UserReviewSchedule
 
 class SignUpForm(UserCreationForm):
-    email = forms.EmailField(required=True)
+    email = forms.EmailField(
+        required=True,
+        label="Email",
+    )
 
     class Meta:
-        model = User
+        model = get_user_model()
         fields = ("username", "email", "password1", "password2")
+
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip().lower()
+
+        if not email:
+            raise forms.ValidationError("Email is required.")
+
+        User = get_user_model()
+
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("A user with this email already exists.")
+
+        return email
 
 
 class DeckForm(forms.ModelForm):
