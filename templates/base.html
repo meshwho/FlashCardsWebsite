@@ -178,169 +178,126 @@
                 }
             })();
         </script>
-    {% endif %}
-    {% if user.is_authenticated %}
-    <script>
-        (function () {
-            if (!("serviceWorker" in navigator)) {
-                console.warn("Service workers are not supported in this browser.");
-                return;
-            }
 
-            window.addEventListener("load", function () {
-                navigator.serviceWorker.getRegistrations()
-                    .then(function (registrations) {
-                        const cleanupTasks = registrations.map(function (registration) {
-                            if (registration.scope.includes("/static/js/")) {
-                                console.log("Unregistering old service worker:", registration.scope);
-                                return registration.unregister();
+        <script>
+            (function () {
+                if (!("serviceWorker" in navigator)) {
+                    console.warn("Service workers are not supported in this browser.");
+                    return;
+                }
+
+                window.addEventListener("load", function () {
+                    navigator.serviceWorker.getRegistrations()
+                        .then(function (registrations) {
+                            const cleanupTasks = registrations.map(function (registration) {
+                                if (registration.scope.includes("/static/js/")) {
+                                    console.log("Unregistering old service worker:", registration.scope);
+                                    return registration.unregister();
+                                }
+
+                                return Promise.resolve(false);
+                            });
+
+                            return Promise.all(cleanupTasks);
+                        })
+                        .then(function () {
+                            return navigator.serviceWorker.register("{% url 'service_worker' %}", {
+                                scope: "/"
+                            });
+                        })
+                        .then(function (registration) {
+                            console.log("Service worker registered:", registration.scope);
+                        })
+                        .catch(function (error) {
+                            console.warn("Service worker registration failed:", error);
+                        });
+                });
+            })();
+        </script>
+
+        <script>
+            (function () {
+                const button = document.getElementById("enable-notifications-btn");
+                const status = document.getElementById("notification-status");
+
+                if (!button || !status) {
+                    return;
+                }
+
+                const isIOS =
+                    /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+                    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+                const isStandalone =
+                    window.matchMedia("(display-mode: standalone)").matches ||
+                    window.navigator.standalone === true;
+
+                updateNotificationStatus();
+
+                button.addEventListener("click", function () {
+                    enablePushNotifications();
+                });
+
+                async function enablePushNotifications() {
+                    button.disabled = true;
+                    status.textContent = "Preparing notifications...";
+
+                    try {
+                        if (isIOS && !isStandalone) {
+                            throw new Error(
+                                "On iPhone, add FlashCards to the Home Screen and open it from the app icon to enable notifications."
+                            );
+                        }
+
+                        if (!("Notification" in window)) {
+                            throw new Error("Notifications are not supported in this browser.");
+                        }
+
+                        if (!("serviceWorker" in navigator)) {
+                            throw new Error("Service workers are not supported in this browser.");
+                        }
+
+                        if (!("PushManager" in window)) {
+                            throw new Error("Push notifications are not supported in this browser/context.");
+                        }
+
+                        const registration = await navigator.serviceWorker.ready;
+
+                        let permission = Notification.permission;
+
+                        if (permission !== "granted") {
+                            permission = await Notification.requestPermission();
+                        }
+
+                        if (permission !== "granted") {
+                            throw new Error("Notification permission was not granted.");
+                        }
+
+                        let subscription = await registration.pushManager.getSubscription();
+
+                        if (!subscription) {
+                            const configResponse = await fetch("{% url 'push_config' %}", {
+                                method: "GET",
+                                credentials: "same-origin"
+                            });
+
+                            if (!configResponse.ok) {
+                                throw new Error("Could not load push configuration.");
                             }
 
-                            return Promise.resolve(false);
-                        });
+                            const config = await configResponse.json();
 
-                        return Promise.all(cleanupTasks);
-                    })
-                    .then(function () {
-                        return navigator.serviceWorker.register("{% url 'service_worker' %}", {
-                            scope: "/"
-                        });
-                    })
-                    .then(function (registration) {
-                        console.log("Service worker registered:", registration.scope);
-                    })
-                    .catch(function (error) {
-                        console.warn("Service worker registration failed:", error);
-                    });
-            });
-        })();
-    </script>
-    <script>
-        (function () {
-            const button = document.getElementById("enable-notifications-btn");
-            const status = document.getElementById("notification-status");
+                            if (!config.publicKey) {
+                                throw new Error("VAPID public key is missing.");
+                            }
 
-            if (!button || !status) {
-                return;
-            }
-
-            if (!("Notification" in window)) {
-                button.disabled = true;
-                status.textContent = "Notifications are not supported in this browser.";
-                return;
-            }
-
-            if (!("serviceWorker" in navigator)) {
-                button.disabled = true;
-                status.textContent = "Service workers are not supported in this browser.";
-                return;
-            }
-
-            updateNotificationStatus();
-
-            button.addEventListener("click", function () {
-                Notification.requestPermission()
-                    .then(function (permission) {
-                        updateNotificationStatus();
-
-                        if (permission === "granted") {
-                            status.textContent = "Notifications are enabled for this device.";
-                        } else if (permission === "denied") {
-                            status.textContent = "Notifications are blocked. Enable them in browser settings.";
-                        } else {
-                            status.textContent = "Notifications were not enabled.";
-                        }
-                    })
-                    .catch(function (error) {
-                        console.warn("Notification permission request failed:", error);
-                        status.textContent = "Could not request notification permission.";
-                    });
-            });
-
-            function updateNotificationStatus() {
-                if (Notification.permission === "granted") {
-                    button.disabled = true;
-                    status.textContent = "Notifications are already enabled for this device.";
-                    return;
-                }
-
-                if (Notification.permission === "denied") {
-                    button.disabled = true;
-                    status.textContent = "Notifications are blocked. Enable them in browser settings.";
-                    return;
-                }
-
-                button.disabled = false;
-                status.textContent = "Notifications are not enabled yet.";
-            }
-        })();
-    </script>
-    <script>
-        (function () {
-            const button = document.getElementById("enable-notifications-btn");
-            const status = document.getElementById("notification-status");
-
-            if (!button || !status) {
-                return;
-            }
-
-            if (!("Notification" in window)) {
-                button.disabled = true;
-                status.textContent = "Notifications are not supported in this browser.";
-                return;
-            }
-
-            if (!("serviceWorker" in navigator)) {
-                button.disabled = true;
-                status.textContent = "Service workers are not supported in this browser.";
-                return;
-            }
-
-            if (!("PushManager" in window)) {
-                button.disabled = true;
-                status.textContent = "Push notifications are not supported in this browser.";
-                return;
-            }
-
-            updateNotificationStatus();
-
-            button.addEventListener("click", function () {
-                button.disabled = true;
-                status.textContent = "Preparing notifications...";
-
-                navigator.serviceWorker.ready
-                    .then(function (registration) {
-                        return Notification.requestPermission()
-                            .then(function (permission) {
-                                if (permission !== "granted") {
-                                    throw new Error("Notification permission was not granted.");
-                                }
-
-                                return fetch("{% url 'push_config' %}", {
-                                    method: "GET",
-                                    credentials: "same-origin"
-                                });
-                            })
-                            .then(function (response) {
-                                if (!response.ok) {
-                                    throw new Error("Could not load push configuration.");
-                                }
-
-                                return response.json();
-                            })
-                            .then(function (config) {
-                                if (!config.publicKey) {
-                                    throw new Error("VAPID public key is missing.");
-                                }
-
-                                return registration.pushManager.subscribe({
-                                    userVisibleOnly: true,
-                                    applicationServerKey: urlBase64ToUint8Array(config.publicKey)
-                                });
+                            subscription = await registration.pushManager.subscribe({
+                                userVisibleOnly: true,
+                                applicationServerKey: urlBase64ToUint8Array(config.publicKey)
                             });
-                    })
-                    .then(function (subscription) {
-                        return fetch("{% url 'push_subscribe' %}", {
+                        }
+
+                        const saveResponse = await fetch("{% url 'push_subscribe' %}", {
                             method: "POST",
                             credentials: "same-origin",
                             headers: {
@@ -349,78 +306,98 @@
                             },
                             body: JSON.stringify(subscription)
                         });
-                    })
-                    .then(function (response) {
-                        if (!response.ok) {
-                            throw new Error("Could not save push subscription.");
+
+                        if (!saveResponse.ok) {
+                            throw new Error("Could not save push subscription on the server.");
                         }
 
-                        return response.json();
-                    })
-                    .then(function () {
                         status.textContent = "Notifications are enabled for this device.";
                         button.disabled = true;
-                    })
-                    .catch(function (error) {
+                    } catch (error) {
                         console.warn("Push setup failed:", error);
 
-                        if (Notification.permission === "denied") {
-                            status.textContent = "Notifications are blocked. Enable them in browser settings.";
+                        status.textContent = error.message || "Could not enable notifications. Please try again.";
+
+                        if ("Notification" in window && Notification.permission === "denied") {
                             button.disabled = true;
-                            return;
+                        } else {
+                            button.disabled = false;
                         }
+                    }
+                }
 
-                        status.textContent = "Could not enable notifications. Please try again.";
+                function updateNotificationStatus() {
+                    if (isIOS && !isStandalone) {
                         button.disabled = false;
-                    });
-            });
+                        status.textContent =
+                            "On iPhone, add FlashCards to the Home Screen and open it from the app icon to enable notifications.";
+                        return;
+                    }
 
-            function updateNotificationStatus() {
-                if (Notification.permission === "granted") {
-                    status.textContent = "Notifications permission is granted. Click the button to register this device.";
+                    if (!("Notification" in window)) {
+                        button.disabled = true;
+                        status.textContent = "Notifications are not supported in this browser.";
+                        return;
+                    }
+
+                    if (!("serviceWorker" in navigator)) {
+                        button.disabled = true;
+                        status.textContent = "Service workers are not supported in this browser.";
+                        return;
+                    }
+
+                    if (!("PushManager" in window)) {
+                        button.disabled = true;
+                        status.textContent = "Push notifications are not supported in this browser/context.";
+                        return;
+                    }
+
+                    if (Notification.permission === "denied") {
+                        button.disabled = true;
+                        status.textContent = "Notifications are blocked. Enable them in browser settings.";
+                        return;
+                    }
+
+                    if (Notification.permission === "granted") {
+                        button.disabled = false;
+                        status.textContent =
+                            "Notifications permission is granted. Click the button to register this device.";
+                        return;
+                    }
+
                     button.disabled = false;
-                    return;
+                    status.textContent = "Notifications are not enabled yet.";
                 }
 
-                if (Notification.permission === "denied") {
-                    status.textContent = "Notifications are blocked. Enable them in browser settings.";
-                    button.disabled = true;
-                    return;
+                function urlBase64ToUint8Array(base64String) {
+                    const padding = "=".repeat((4 - base64String.length % 4) % 4);
+                    const base64 = (base64String + padding)
+                        .replace(/-/g, "+")
+                        .replace(/_/g, "/");
+
+                    const rawData = window.atob(base64);
+                    const outputArray = new Uint8Array(rawData.length);
+
+                    for (let i = 0; i < rawData.length; ++i) {
+                        outputArray[i] = rawData.charCodeAt(i);
+                    }
+
+                    return outputArray;
                 }
 
-                status.textContent = "Notifications are not enabled yet.";
-                button.disabled = false;
-            }
+                function getCsrfToken() {
+                    const input = document.querySelector(
+                        '#csrf-token-source input[name="csrfmiddlewaretoken"]'
+                    );
 
-            function urlBase64ToUint8Array(base64String) {
-                const padding = "=".repeat((4 - base64String.length % 4) % 4);
-                const base64 = (base64String + padding)
-                    .replace(/-/g, "+")
-                    .replace(/_/g, "/");
+                    if (input && input.value) {
+                        return input.value;
+                    }
 
-                const rawData = window.atob(base64);
-                const outputArray = new Uint8Array(rawData.length);
-
-                for (let i = 0; i < rawData.length; ++i) {
-                    outputArray[i] = rawData.charCodeAt(i);
+                    return "";
                 }
-
-                return outputArray;
-            }
-
-            function getCsrfToken() {
-                const input = document.querySelector(
-                    '#csrf-token-source input[name="csrfmiddlewaretoken"]'
-                );
-
-                if (input && input.value) {
-                    return input.value;
-                }
-
-                return "";
-            }
-        })();
-    </script>
+            })();
+        </script>
     {% endif %}
 </body>
 </html>
