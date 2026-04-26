@@ -1646,3 +1646,10 @@ body::-webkit-scrollbar {
         margin-top: 0;
     }
 }
+
+@media (max-width: 640px) {
+    .notifications-subtitle,
+    .notification-status {
+        display: none;
+    }
+}
