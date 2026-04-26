@@ -1467,3 +1467,35 @@ textarea { resize: vertical; min-height: 90px; }
         font-size: 16px;
     }
 }
+
+/* ── Hide scrollbars while keeping scrolling enabled ── */
+html,
+body {
+    scrollbar-width: none;      /* Firefox */
+    -ms-overflow-style: none;   /* Old Edge / IE */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+/* Hide scrollbars inside scrollable app blocks */
+.table-wrap,
+.table-scroll,
+.page-wrapper,
+.mobile-menu {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.table-wrap::-webkit-scrollbar,
+.table-scroll::-webkit-scrollbar,
+.page-wrapper::-webkit-scrollbar,
+.mobile-menu::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
