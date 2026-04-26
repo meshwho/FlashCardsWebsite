@@ -30,7 +30,7 @@
 
                 {% if user.is_authenticated %}
                     <div class="nav-right">
-                        <form method="post" action="{% url 'logout' %}" class="nav-logout-desktop">
+                        <form method="post" action="{% url 'logout' %}" class="nav-logout-desktop logout-form">
                             {% csrf_token %}
                             <button type="submit" class="btn-logout">Log out</button>
                         </form>
@@ -67,7 +67,7 @@
                     <a href="{% url 'profile' %}" class="nav-profile-link">Profile</a>
 
                     <div class="mobile-menu-footer">
-                        <form method="post" action="{% url 'logout' %}">
+                        <form method="post" action="{% url 'logout' %}" class="logout-form">
                             {% csrf_token %}
                             <button type="submit" class="btn-logout mobile-logout-btn">Log out</button>
                         </form>
@@ -462,6 +462,75 @@
                 }
 
                 return outputArray;
+            }
+
+            function getCsrfToken() {
+                const input = document.querySelector(
+                    '#csrf-token-source input[name="csrfmiddlewaretoken"]'
+                );
+
+                if (input && input.value) {
+                    return input.value;
+                }
+
+                return "";
+            }
+        })();
+    </script>
+    <script>
+        (function () {
+            const logoutForms = document.querySelectorAll(".logout-form");
+
+            if (!logoutForms.length) {
+                return;
+            }
+
+            logoutForms.forEach(function (form) {
+                form.addEventListener("submit", async function (event) {
+                    if (form.dataset.pushCleanupDone === "true") {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    try {
+                        await unsubscribeCurrentDeviceFromPush();
+                    } catch (error) {
+                        console.warn("Push cleanup before logout failed:", error);
+                    }
+
+                    form.dataset.pushCleanupDone = "true";
+                    form.submit();
+                });
+            });
+
+            async function unsubscribeCurrentDeviceFromPush() {
+                if (!("serviceWorker" in navigator)) {
+                    return;
+                }
+
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.getSubscription();
+
+                if (!subscription) {
+                    return;
+                }
+
+                const endpoint = subscription.endpoint;
+
+                await fetch("{% url 'push_unsubscribe' %}", {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        endpoint: endpoint
+                    })
+                });
+
+                await subscription.unsubscribe();
             }
 
             function getCsrfToken() {
