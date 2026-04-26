@@ -1451,3 +1451,19 @@ textarea { resize: vertical; min-height: 90px; }
         justify-content: flex-start;
     }
 }
+
+/* ── Prevent iOS Safari input zoom ── */
+@media (max-width: 768px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="time"],
+    textarea,
+    select,
+    .card-input,
+    .time-input,
+    .number-input {
+        font-size: 16px;
+    }
+}
