@@ -1219,25 +1219,57 @@ def sentence_practice_view(request):
 @require_POST
 def update_timezone_view(request):
     try:
-        data = json.loads(request.body.decode("utf-8"))
-        timezone_name = data.get("timezone")
-    except json.JSONDecodeError:
-        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse(
+            {"ok": False, "error": "Invalid JSON."},
+            status=400,
+        )
+
+    timezone_name = (payload.get("timezone") or "").strip()
 
     if not timezone_name:
-        return JsonResponse({"ok": False, "error": "Missing timezone"}, status=400)
+        return JsonResponse(
+            {"ok": False, "error": "Timezone is required."},
+            status=400,
+        )
+
+    # Some browsers/devices may still return older IANA aliases.
+    timezone_aliases = {
+        "Europe/Kiev": "Europe/Kyiv",
+    }
+
+    timezone_name = timezone_aliases.get(timezone_name, timezone_name)
 
     try:
         ZoneInfo(timezone_name)
     except ZoneInfoNotFoundError:
-        return JsonResponse({"ok": False, "error": "Invalid timezone"}, status=400)
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "Invalid timezone.",
+                "timezone": timezone_name,
+            },
+            status=400,
+        )
 
-    schedule, _ = UserReviewSchedule.objects.get_or_create(user=request.user)
-    schedule.timezone = timezone_name
-    schedule.save(update_fields=["timezone"])
+    schedule = ensure_default_review_slots(request.user)
 
-    return JsonResponse({"ok": True, "timezone": timezone_name})
+    if schedule.timezone != timezone_name:
+        schedule.timezone = timezone_name
+        schedule.save(update_fields=["timezone"])
 
+        updated_count = reschedule_all_user_cards(request.user)
+    else:
+        updated_count = 0
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "timezone": schedule.timezone,
+            "updated_card_due_times": updated_count,
+        }
+    )
 
 @login_required
 @require_POST
