@@ -1590,3 +1590,29 @@ body::-webkit-scrollbar {
         font-size: 0.9rem;
     }
 }
+
+.notifications-head h2 {
+    margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+    .notifications-head {
+        align-items: center;
+        gap: 12px;
+    }
+
+    .notifications-subtitle,
+    .notification-status {
+        display: none;
+    }
+
+    .notifications-card {
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+
+    .notification-switch {
+        flex-shrink: 0;
+        margin-top: 0;
+    }
+}
