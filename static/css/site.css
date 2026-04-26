@@ -1562,3 +1562,31 @@ body::-webkit-scrollbar {
     opacity: 0.55;
     cursor: not-allowed;
 }
+
+.settings-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.notification-status {
+    color: var(--text-2);
+    font-size: 0.95rem;
+    line-height: 1.45;
+}
+
+@media (max-width: 640px) {
+    .settings-head {
+        align-items: flex-start;
+    }
+
+    .notification-switch {
+        margin-top: 2px;
+        flex-shrink: 0;
+    }
+
+    .notification-status {
+        font-size: 0.9rem;
+    }
+}
