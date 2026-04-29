@@ -24,6 +24,7 @@ from .views import (
     push_config_view,
     save_push_subscription_view,
     delete_push_subscription_view,
+    ambiguous_cards_view,
 )
 
 urlpatterns = [
@@ -55,4 +56,5 @@ urlpatterns = [
     path("push/config/", push_config_view, name="push_config"),
     path("push/subscribe/", save_push_subscription_view, name="push_subscribe"),
     path("push/unsubscribe/", delete_push_subscription_view, name="push_unsubscribe"),
+    path("decks/duplicates/", ambiguous_cards_view, name="ambiguous_cards"),
 ]

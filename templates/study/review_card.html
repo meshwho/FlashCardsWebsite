@@ -17,6 +17,12 @@
     <div class="card">
         <div class="face-label">Question</div>
         <div class="card-text">{{ card.question }}</div>
+
+        {% if card.context %}
+            <p class="subtitle" style="margin-top: 10px; margin-bottom: 0;">
+                Context: {{ card.context }}
+            </p>
+        {% endif %}
     </div>
 </div>
 

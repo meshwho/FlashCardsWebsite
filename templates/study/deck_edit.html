@@ -16,10 +16,18 @@
 
         <div class="card fade-in-2" style="margin-bottom:24px;">
             <h3 style="margin-bottom:16px;">Deck details</h3>
+
             <div class="form-group" style="max-width:400px;margin-bottom:0;">
                 <label for="{{ deck_form.title.id_for_label }}">Deck title</label>
                 {{ deck_form.title }}
-                {% if deck_form.title.errors %}<ul class="errorlist">{% for e in deck_form.title.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+
+                {% if deck_form.title.errors %}
+                    <ul class="errorlist">
+                        {% for e in deck_form.title.errors %}
+                            <li>{{ e }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
             </div>
         </div>
 
@@ -32,76 +40,139 @@
 
             <div id="cards-container">
                 {% for form in card_formset %}
-                <div class="card-form-item"
-                     data-existing="{% if form.instance.pk %}true{% else %}false{% endif %}">
-                    {{ form.id }}
-                    {% if form.non_field_errors %}<p style="color:var(--red);font-size:.875rem;margin-bottom:10px;">{{ form.non_field_errors }}</p>{% endif %}
-                    <div class="card-num">Card {{ forloop.counter }}</div>
-                    <div class="card-form-row">
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label>Term / Question</label>
-                            {{ form.question }}
-                            {% if form.question.errors %}<ul class="errorlist">{% for e in form.question.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
-                        </div>
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label>Definition / Answer</label>
-                            {{ form.answer }}
-                            {% if form.answer.errors %}<ul class="errorlist">{% for e in form.answer.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
-                        </div>
-                        <div class="form-group card-form-checkbox-group">
-                            <label for="{{ form.has_article.id_for_label }}">Has article</label>
-                            <div class="checkbox-row">
-                                {{ form.has_article }}
+                    <div
+                        class="card-form-item"
+                        data-existing="{% if form.instance.pk %}true{% else %}false{% endif %}"
+                    >
+                        {{ form.id }}
+
+                        {% if form.non_field_errors %}
+                            <div class="form-error-banner" style="margin-bottom:14px;">
+                                {% for error in form.non_field_errors %}
+                                    <p>{{ error }}</p>
+                                {% endfor %}
                             </div>
-                            {% if form.has_article.errors %}
-                                <ul class="errorlist">
-                                    {% for e in form.has_article.errors %}
-                                        <li>{{ e }}</li>
-                                    {% endfor %}
-                                </ul>
+                        {% endif %}
+
+                        <div class="card-num">Card {{ forloop.counter }}</div>
+
+                        <div class="card-form-row">
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label>Term / Question</label>
+                                {{ form.question }}
+
+                                {% if form.question.errors %}
+                                    <ul class="errorlist">
+                                        {% for e in form.question.errors %}
+                                            <li>{{ e }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </div>
+
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label>Definition / Answer</label>
+                                {{ form.answer }}
+
+                                {% if form.answer.errors %}
+                                    <ul class="errorlist">
+                                        {% for e in form.answer.errors %}
+                                            <li>{{ e }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </div>
+
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label>Context</label>
+                                {{ form.context }}
+
+                                {% if form.context.errors %}
+                                    <ul class="errorlist">
+                                        {% for e in form.context.errors %}
+                                            <li>{{ e }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </div>
+
+                            <div class="form-group card-form-checkbox-group" style="margin-bottom:0;">
+                                <label for="{{ form.has_article.id_for_label }}">Has article</label>
+
+                                <div class="checkbox-row">
+                                    {{ form.has_article }}
+                                </div>
+
+                                {% if form.has_article.errors %}
+                                    <ul class="errorlist">
+                                        {% for e in form.has_article.errors %}
+                                            <li>{{ e }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="card-form-footer">
+                            {% if form.instance.pk %}
+                                <div class="delete-existing-wrapper">
+                                    <label style="display:none;">{{ form.DELETE }}</label>
+                                    <button type="button" class="btn btn-danger btn-sm delete-card-btn">
+                                        Delete card
+                                    </button>
+                                </div>
+                            {% else %}
+                                <button type="button" class="btn btn-ghost btn-sm remove-new-card-btn">
+                                    Remove
+                                </button>
                             {% endif %}
                         </div>
                     </div>
-                    <div class="card-form-footer">
-                        {% if form.instance.pk %}
-                        <div class="delete-existing-wrapper">
-                            <label style="display:none;">{{ form.DELETE }}</label>
-                            <button type="button" class="btn btn-danger btn-sm delete-card-btn">Delete card</button>
-                        </div>
-                        {% else %}
-                        <button type="button" class="btn btn-ghost btn-sm remove-new-card-btn">Remove</button>
-                        {% endif %}
-                    </div>
-                </div>
                 {% endfor %}
             </div>
 
             <template id="empty-card-template">
                 <div class="card-form-item" data-existing="false">
                     {{ empty_card_form.id }}
+
                     <div class="card-num">New card</div>
+
                     <div class="card-form-row">
                         <div class="form-group" style="margin-bottom:0;">
                             <label>Term / Question</label>
                             {{ empty_card_form.question }}
                         </div>
+
                         <div class="form-group" style="margin-bottom:0;">
                             <label>Definition / Answer</label>
                             {{ empty_card_form.answer }}
                         </div>
+
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Context</label>
+                            {{ empty_card_form.context }}
+                        </div>
+
                         <div class="form-group card-form-checkbox-group" style="margin-bottom:0;">
                             <label for="{{ empty_card_form.has_article.id_for_label }}">Has article</label>
+
                             <div class="checkbox-row">
                                 {{ empty_card_form.has_article }}
                             </div>
                         </div>
                     </div>
+
                     <div class="card-form-footer">
-                        <button type="button" class="btn btn-ghost btn-sm remove-new-card-btn">Remove</button>
+                        <button type="button" class="btn btn-ghost btn-sm remove-new-card-btn">
+                            Remove
+                        </button>
                     </div>
                 </div>
             </template>
-            <button type="button" id="add-card-btn" class="btn btn-secondary btn-sm">+ Add card</button>
+
+            <button type="button" id="add-card-btn" class="btn btn-secondary btn-sm">
+                + Add card
+            </button>
         </div>
 
         <div class="stack-actions" style="margin-top:28px;padding-top:24px;border-top:1px solid var(--border);">
@@ -109,6 +180,7 @@
             <a href="{% url 'deck_detail' deck.id %}" class="btn btn-ghost">Cancel</a>
         </div>
     </form>
+
     <div class="danger-zone fade-in-3">
         <div class="danger-zone-content">
             <div class="danger-zone-icon">!</div>
@@ -142,34 +214,77 @@
     const totalFormsInput = document.getElementById("id_cards-TOTAL_FORMS");
     const template = document.getElementById("empty-card-template");
 
+    if (!addCardBtn || !cardsContainer || !totalFormsInput || !template) {
+        return;
+    }
+
     function updateElementIndex(element, index) {
-        ["name","id","for"].forEach(attr => {
-            const val = element.getAttribute(attr);
-            if (val) element.setAttribute(attr, val.replace(/__prefix__/g, index));
+        ["name", "id", "for"].forEach(function (attr) {
+            const value = element.getAttribute(attr);
+
+            if (!value) {
+                return;
+            }
+
+            element.setAttribute(attr, value.replace(/__prefix__/g, index));
         });
     }
 
     function addCardForm() {
         const formIndex = parseInt(totalFormsInput.value, 10);
         const fragment = template.content.cloneNode(true);
-        fragment.querySelectorAll("[name],[id],label").forEach(el => updateElementIndex(el, formIndex));
+
+        fragment
+            .querySelectorAll("[name], [id], label")
+            .forEach(function (element) {
+                updateElementIndex(element, formIndex);
+            });
+
         cardsContainer.appendChild(fragment);
         totalFormsInput.value = formIndex + 1;
-        cardsContainer.lastElementChild.scrollIntoView({ behavior: "smooth", block: "center" });
+
+        const newCard = cardsContainer.lastElementChild;
+
+        if (newCard) {
+            newCard.scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+        }
     }
 
     addCardBtn.addEventListener("click", addCardForm);
 
-    cardsContainer.addEventListener("click", function (e) {
-        const deleteBtn = e.target.closest(".delete-card-btn");
-        const removeBtn = e.target.closest(".remove-new-card-btn");
+    cardsContainer.addEventListener("click", function (event) {
+        const deleteBtn = event.target.closest(".delete-card-btn");
+        const removeBtn = event.target.closest(".remove-new-card-btn");
+
         if (deleteBtn) {
             const cardForm = deleteBtn.closest(".card-form-item");
-            const cb = cardForm.querySelector('input[type="checkbox"][name$="-DELETE"]');
-            if (cb) { cb.checked = true; cardForm.style.opacity = ".35"; cardForm.style.pointerEvents = "none"; }
+
+            if (!cardForm) {
+                return;
+            }
+
+            const deleteCheckbox = cardForm.querySelector(
+                'input[type="checkbox"][name$="-DELETE"]'
+            );
+
+            if (deleteCheckbox) {
+                deleteCheckbox.checked = true;
+                cardForm.style.opacity = ".35";
+                cardForm.style.pointerEvents = "none";
+            }
+
+            return;
         }
+
         if (removeBtn) {
-            removeBtn.closest(".card-form-item").remove();
+            const cardForm = removeBtn.closest(".card-form-item");
+
+            if (cardForm) {
+                cardForm.remove();
+            }
         }
     });
 })();

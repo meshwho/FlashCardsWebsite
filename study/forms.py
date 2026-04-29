@@ -6,6 +6,8 @@ from django.forms import formset_factory
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from django.contrib.auth import get_user_model
 from .models import Card, Deck, UserReviewSchedule
+from .card_duplicates import normalize_card_text
+
 
 class SignUpForm(UserCreationForm):
     email = forms.EmailField(
@@ -68,12 +70,18 @@ class DeckForm(forms.ModelForm):
 class CardForm(forms.ModelForm):
     class Meta:
         model = Card
-        fields = ["question", "answer", "has_article"]
+        fields = ["question", "context", "answer", "has_article"]
         widgets = {
             "question": forms.Textarea(
                 attrs={
                     "rows": 2,
                     "placeholder": "Enter term / question",
+                    "class": "card-input",
+                }
+            ),
+            "context": forms.TextInput(
+                attrs={
+                    "placeholder": "Optional context, e.g. finance, river, noun, verb",
                     "class": "card-input",
                 }
             ),
@@ -85,6 +93,28 @@ class CardForm(forms.ModelForm):
                 }
             ),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        question = (cleaned_data.get("question") or "").strip()
+        context = (cleaned_data.get("context") or "").strip()
+        answer = (cleaned_data.get("answer") or "").strip()
+
+        cleaned_data["question"] = question
+        cleaned_data["context"] = context
+        cleaned_data["answer"] = answer
+
+        if not question and not answer and not context:
+            return cleaned_data
+
+        if question and not answer:
+            self.add_error("answer", "Answer is required if question is filled.")
+
+        if answer and not question:
+            self.add_error("question", "Question is required if answer is filled.")
+
+        return cleaned_data
 
 
 
@@ -106,9 +136,127 @@ class CardForm(forms.ModelForm):
         return cleaned_data
 
 
+class AmbiguousCardContextForm(forms.Form):
+    card_id = forms.UUIDField(widget=forms.HiddenInput)
+    context = forms.CharField(
+        required=False,
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={
+                "class": "card-input",
+                "placeholder": "Add context, e.g. finance, river, noun, verb",
+            }
+        ),
+    )
+
 class BaseCardInlineFormSet(BaseInlineFormSet):
     def clean(self):
         super().clean()
+
+        if any(self.errors):
+            return
+
+        active_items = []
+        deleted_ids = set()
+
+        for form in self.forms:
+            cleaned_data = getattr(form, "cleaned_data", None) or {}
+
+            if cleaned_data.get("DELETE"):
+                if form.instance and form.instance.pk:
+                    deleted_ids.add(form.instance.pk)
+                continue
+
+            question = cleaned_data.get("question")
+            answer = cleaned_data.get("answer")
+
+            if not question and not answer:
+                continue
+
+            question_norm = normalize_card_text(question)
+            answer_norm = normalize_card_text(answer)
+
+            if not question_norm or not answer_norm:
+                continue
+
+            active_items.append({
+                "form": form,
+                "card_id": form.instance.pk if form.instance and form.instance.pk else None,
+                "question_norm": question_norm,
+                "answer_norm": answer_norm,
+            })
+
+        self._validate_exact_duplicates_inside_formset(active_items)
+        self._validate_exact_duplicates_against_database(active_items, deleted_ids)
+
+    def _validate_exact_duplicates_inside_formset(self, active_items):
+        seen = {}
+
+        for item in active_items:
+            key = (item["question_norm"], item["answer_norm"])
+
+            if key in seen:
+                item["form"].add_error(
+                    None,
+                    "This exact card already appears in this deck. "
+                    "Duplicate cards with the same question and answer are not allowed.",
+                )
+                seen[key]["form"].add_error(
+                    None,
+                    "This exact card already appears in this deck. "
+                    "Duplicate cards with the same question and answer are not allowed.",
+                )
+            else:
+                seen[key] = item
+
+    def _validate_exact_duplicates_against_database(self, active_items, deleted_ids):
+        owner = getattr(self.instance, "owner", None)
+
+        if owner is None:
+            return
+
+        current_form_ids = {
+            item["card_id"]
+            for item in active_items
+            if item["card_id"] is not None
+        }
+
+        excluded_ids = current_form_ids | deleted_ids
+
+        existing_cards = (
+            Card.objects
+            .filter(deck__owner=owner)
+            .select_related("deck")
+            .only("id", "question", "answer", "deck__title")
+        )
+
+        if excluded_ids:
+            existing_cards = existing_cards.exclude(pk__in=excluded_ids)
+
+        existing_items = []
+
+        for card in existing_cards:
+            existing_items.append({
+                "card": card,
+                "question_norm": normalize_card_text(card.question),
+                "answer_norm": normalize_card_text(card.answer),
+            })
+
+        for item in active_items:
+            for existing in existing_items:
+                same_question = item["question_norm"] == existing["question_norm"]
+                same_answer = item["answer_norm"] == existing["answer_norm"]
+
+                if same_question and same_answer:
+                    item["form"].add_error(
+                        None,
+                        (
+                            "This exact card already exists in deck "
+                            f'"{existing["card"].deck.title}". '
+                            "Duplicate cards with the same question and answer are not allowed."
+                        ),
+                    )
+                    break
 
 
 CardInlineFormSet = inlineformset_factory(
@@ -116,7 +264,7 @@ CardInlineFormSet = inlineformset_factory(
     model=Card,
     form=CardForm,
     formset=BaseCardInlineFormSet,
-    fields=["question", "answer", "has_article"],
+    fields=["question", "context", "answer", "has_article"],
     extra=1,
     can_delete=True,
 )

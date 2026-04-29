@@ -16,6 +16,12 @@
 <div class="card">
     <div class="face-label">Prompt</div>
     <div class="card-text">{{ prompt_text }}</div>
+
+    {% if card.context %}
+        <p class="subtitle" style="margin-top: 10px; margin-bottom: 0;">
+            Context: {{ card.context }}
+        </p>
+    {% endif %}
 </div>
 
 {% if feedback %}

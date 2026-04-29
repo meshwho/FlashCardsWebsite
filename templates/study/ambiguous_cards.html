@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Find duplicates — FlashCards{% endblock %}
+
+{% block content %}
+<div class="page-header-row fade-in">
+    <div>
+        <h1>Find duplicates</h1>
+        <p class="subtitle">
+            Review ambiguous cards and add context so training prompts are clear.
+        </p>
+    </div>
+
+    <a href="{% url 'deck_list' %}" class="btn btn-ghost btn-sm">← Back to decks</a>
+</div>
+
+{% if rows %}
+    <form method="post" class="fade-in-2">
+        {% csrf_token %}
+        {{ formset.management_form }}
+
+        <div class="card" style="margin-bottom: 20px;">
+            <p class="subtitle" style="margin-bottom: 0;">
+                These cards may be ambiguous because the same question or answer appears in different cards.
+                Add context such as “finance”, “river”, “noun”, “verb”, or a short usage note.
+            </p>
+        </div>
+
+        <div class="table-wrap table-mobile-cards">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Deck</th>
+                        <th>Question</th>
+                        <th>Answer</th>
+                        <th>Why ambiguous</th>
+                        <th>Context</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                        <tr>
+                            <td data-label="Deck">
+                                {{ row.card.deck.title }}
+                            </td>
+
+                            <td data-label="Question">
+                                {{ row.card.question }}
+                            </td>
+
+                            <td data-label="Answer">
+                                {{ row.card.answer }}
+                            </td>
+
+                            <td data-label="Why ambiguous">
+                                {% for reason in row.reasons %}
+                                    <div>
+                                        <span class="badge badge-amber">{{ reason }}</span>
+                                    </div>
+                                {% endfor %}
+                            </td>
+
+                            <td data-label="Context">
+                                {{ row.form.card_id }}
+                                {{ row.form.context }}
+                                {% if row.form.context.errors %}
+                                    <ul class="errorlist">
+                                        {% for error in row.form.context.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="stack-actions" style="margin-top: 24px;">
+            <button type="submit" class="btn btn-primary">Save contexts</button>
+            <a href="{% url 'deck_list' %}" class="btn btn-ghost">Cancel</a>
+        </div>
+    </form>
+{% else %}
+    <div class="empty-state card fade-in-2">
+        <span class="empty-icon">✓</span>
+        <p>No ambiguous cards found.</p>
+        <a href="{% url 'deck_list' %}" class="btn btn-primary">Back to decks</a>
+    </div>
+{% endif %}
+{% endblock %}

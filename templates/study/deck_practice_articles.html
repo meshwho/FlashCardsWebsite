@@ -11,6 +11,12 @@
 <div class="card fade-in-2 article-practice-card">
     <div class="face-label">Word</div>
     <div class="card-text">{{ word_without_article }}</div>
+
+    {% if card.context %}
+        <p class="subtitle" style="margin-top: 10px; margin-bottom: 0;">
+            Context: {{ card.context }}
+        </p>
+    {% endif %}
 </div>
 
 {% if feedback %}

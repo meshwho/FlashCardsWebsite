@@ -51,6 +51,12 @@ class Card(models.Model):
     answer = models.TextField()
     has_article = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    context = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Optional context for ambiguous cards.",
+    )
 
     # Read model fields for querying and UI
     due = models.DateTimeField(default=timezone.now)
