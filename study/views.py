@@ -16,6 +16,7 @@ from .forms import (
     ReviewSlotFormSet,
     SentencePracticeForm,
     SignUpForm,
+    AmbiguousCardContextForm
 )
 from .models import Card, Deck, PushSubscription, ReviewLog, ReviewSlot, SentenceAttempt
 from .practice_logic import (
@@ -75,7 +76,8 @@ from django.views.decorators.http import require_POST
 import json
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from .models import UserReviewSchedule
-
+from django.forms import formset_factory
+from .card_duplicates import get_ambiguous_cards_for_user
 
 def _get_posted_non_negative_int(request, key, default=0):
     raw_value = request.POST.get(key, default)
@@ -1361,3 +1363,71 @@ def delete_push_subscription_view(request):
         "ok": True,
         "deleted": deleted_count,
     })
+
+@login_required
+def ambiguous_cards_view(request):
+    ambiguous_items = get_ambiguous_cards_for_user(request.user)
+
+    ContextFormSet = formset_factory(
+        AmbiguousCardContextForm,
+        extra=0,
+    )
+
+    if request.method == "POST":
+        formset = ContextFormSet(request.POST)
+
+        cards_by_id = {
+            str(item["card"].id): item["card"]
+            for item in ambiguous_items
+        }
+
+        if formset.is_valid():
+            updated_count = 0
+
+            for form in formset:
+                card_id = str(form.cleaned_data["card_id"])
+                context = (form.cleaned_data.get("context") or "").strip()
+
+                card = cards_by_id.get(card_id)
+
+                if card is None:
+                    continue
+
+                if card.context != context:
+                    card.context = context
+                    card.save(update_fields=["context"])
+                    updated_count += 1
+
+            messages.success(
+                request,
+                f"Contexts saved. Updated {updated_count} card(s)."
+            )
+            return redirect("ambiguous_cards")
+    else:
+        initial = [
+            {
+                "card_id": item["card"].id,
+                "context": item["card"].context,
+            }
+            for item in ambiguous_items
+        ]
+
+        formset = ContextFormSet(initial=initial)
+
+    rows = []
+
+    for item, form in zip(ambiguous_items, formset.forms):
+        rows.append({
+            "card": item["card"],
+            "reasons": item["reasons"],
+            "form": form,
+        })
+
+    return render(
+        request,
+        "study/ambiguous_cards.html",
+        {
+            "rows": rows,
+            "formset": formset,
+        },
+    )

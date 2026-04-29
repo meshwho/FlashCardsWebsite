@@ -32,7 +32,14 @@
         <tbody>
             {% for card in deck.cards.all %}
                 <tr>
-                    <td data-label="Question">{{ card.question|truncatechars:100 }}</td>
+                    <td data-label="Question">
+                        {{ card.question|truncatechars:100 }}
+                        {% if card.context %}
+                            <div class="subtitle" style="margin-top: 4px;">
+                                Context: {{ card.context|truncatechars:80 }}
+                            </div>
+                        {% endif %}
+                    </td>
                     <td data-label="Answer">{{ card.answer|truncatechars:100 }}</td>
                     <td data-label="State">
                         <span class="badge
