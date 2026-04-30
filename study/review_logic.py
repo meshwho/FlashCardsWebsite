@@ -1,3 +1,4 @@
+import math
 import re
 
 
@@ -13,7 +14,12 @@ def normalize_answer(text: str) -> str:
 def strip_article(text: str) -> str:
     """
     Remove the first word from the answer.
-    Example: 'der Tisch' -> 'Tisch'
+
+    Example:
+    'der Tisch' -> 'tisch'
+
+    This is used only for hint generation when has_article=True.
+    It does not change the real stored answer.
     """
     text = normalize_answer(text)
     parts = text.split(" ", 1)
@@ -50,24 +56,71 @@ def get_primary_answer(answer_text: str, has_article: bool = False) -> str:
     return primary
 
 
+def _count_alpha_chars(text: str) -> int:
+    return sum(1 for ch in text if ch.isalpha())
+
+
+def _get_revealed_alpha_count(text: str, hints_used: int) -> int:
+    """
+    Split the alphabetic part of the answer into 4 progressive parts.
+
+    hints_used = 0 -> reveal 0/4
+    hints_used = 1 -> reveal 1/4
+    hints_used = 2 -> reveal 2/4
+    hints_used = 3 -> reveal 3/4
+
+    We use ceil() so short words still reveal something useful.
+    Example:
+    'Haus' has 4 letters:
+      1 hint  -> 1 letter
+      2 hints -> 2 letters
+      3 hints -> 3 letters
+
+    'Auto' has 4 letters:
+      1 hint  -> 1 letter
+      2 hints -> 2 letters
+      3 hints -> 3 letters
+
+    'Universität' has 11 letters:
+      1 hint  -> 3 letters
+      2 hints -> 6 letters
+      3 hints -> 9 letters
+    """
+    hints_used = max(0, min(hints_used, MAX_HINTS))
+
+    if hints_used == 0:
+        return 0
+
+    alpha_count = _count_alpha_chars(text)
+
+    if alpha_count <= 0:
+        return 0
+
+    return min(alpha_count, math.ceil(alpha_count * hints_used / 4))
+
+
 def build_hint_mask(answer_text: str, hints_used: int, has_article: bool = False) -> str:
     """
-    Reveal progressively more letters from the first accepted answer.
-    If has_article=True, the first word is skipped ONLY for hint generation.
+    Reveal progressively larger parts of the first accepted answer.
+
+    The answer is split into 4 equal logical parts:
+    - 1 hint  -> reveal first 1/4
+    - 2 hints -> reveal first 2/4
+    - 3 hints -> reveal first 3/4
+
+    If has_article=True, the first word is skipped only for hint generation.
+    Example:
+    answer = 'der Tisch', has_article=True
+    hint is built from 'tisch', not from 'der tisch'.
+
+    Non-letter characters are preserved but do not count as letters.
     """
     primary = get_primary_answer(answer_text, has_article=has_article)
+
     if not primary:
         return ""
 
-    hints_used = max(0, min(hints_used, MAX_HINTS))
-
-    reveal_map = {
-        0: 0,
-        1: 1,
-        2: 2,
-        3: 3,
-    }
-    reveal_letters = reveal_map[hints_used]
+    reveal_letters = _get_revealed_alpha_count(primary, hints_used)
 
     result = []
     letters_revealed = 0

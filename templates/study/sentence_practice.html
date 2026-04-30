@@ -13,6 +13,22 @@
 <div class="card fade-in-2" style="margin-bottom: 24px;">
     <div class="face-label">Word</div>
     <div class="card-text">{{ card.question }}</div>
+
+    <div style="margin-top: 16px;">
+        <div class="face-label" style="margin-bottom: 6px;">Translation</div>
+        <p class="subtitle" style="margin-bottom: 0;">
+            {{ card.answer }}
+        </p>
+    </div>
+
+    {% if card.context %}
+        <div style="margin-top: 16px;">
+            <div class="face-label" style="margin-bottom: 6px;">Context</div>
+            <p class="subtitle" style="margin-bottom: 0;">
+                {{ card.context }}
+            </p>
+        </div>
+    {% endif %}
 </div>
 
 <div class="card fade-in-2">
@@ -23,6 +39,7 @@
             <div class="form-group">
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                 {{ field }}
+
                 {% if field.errors %}
                     {{ field.errors }}
                 {% endif %}
