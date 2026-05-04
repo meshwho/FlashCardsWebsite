@@ -546,6 +546,108 @@
             }
         })();
     </script>
+    <script>
+(function () {
+    const DEFAULT_LANG = "de-DE";
+
+    function getVoicesSafe() {
+        return window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    }
+
+    function findGermanVoice() {
+        const voices = getVoicesSafe();
+
+        if (!voices.length) {
+            return null;
+        }
+
+        /*
+         * Prefer German voices explicitly.
+         * On Windows/Edge these names are common:
+         * - Microsoft Katja Online (Natural) - German (Germany)
+         * - Microsoft Conrad Online (Natural) - German (Germany)
+         * - Microsoft Florian...
+         */
+        return (
+            voices.find(function (voice) {
+                return voice.name && voice.name.toLowerCase().includes("katja");
+            }) ||
+            voices.find(function (voice) {
+                return voice.name && voice.name.toLowerCase().includes("conrad");
+            }) ||
+            voices.find(function (voice) {
+                return voice.lang === "de-DE";
+            }) ||
+            voices.find(function (voice) {
+                return voice.lang && voice.lang.toLowerCase().startsWith("de");
+            }) ||
+            voices.find(function (voice) {
+                const name = (voice.name || "").toLowerCase();
+                return name.includes("german") || name.includes("deutsch");
+            }) ||
+            null
+        );
+    }
+
+    function speakGerman(text) {
+        if (!("speechSynthesis" in window)) {
+            console.warn("Speech synthesis is not supported in this browser.");
+            return;
+        }
+
+        const cleanText = (text || "").trim();
+
+        if (!cleanText) {
+            return;
+        }
+
+        const voice = findGermanVoice();
+
+        console.log("FlashCards speech text:", cleanText);
+        console.log("FlashCards selected voice:", voice ? {
+            name: voice.name,
+            lang: voice.lang
+        } : null);
+
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+
+        utterance.lang = DEFAULT_LANG;
+        utterance.rate = 0.85;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+
+        if (voice) {
+            utterance.voice = voice;
+            utterance.lang = voice.lang || DEFAULT_LANG;
+        }
+
+        window.speechSynthesis.speak(utterance);
+    }
+
+    document.addEventListener("click", function (event) {
+        const button = event.target.closest(".speak-btn");
+
+        if (!button) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        speakGerman(button.dataset.speechText || "");
+    });
+
+    if ("speechSynthesis" in window) {
+        window.speechSynthesis.onvoiceschanged = function () {
+            window.speechSynthesis.getVoices();
+        };
+
+        window.speechSynthesis.getVoices();
+    }
+})();
+</script>
     {% endif %}
 </body>
 </html>

@@ -17,7 +17,23 @@
 
 <div class="card">
     <div class="face-label">Prompt</div>
-    <div class="card-text">{{ prompt_text }}</div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;">
+        <div class="card-text">{{ prompt_text }}</div>
+
+        {% if can_speak_prompt %}
+            <button
+                type="button"
+                class="btn btn-secondary btn-sm speak-btn"
+                data-speech-text="{{ speech_text|escape }}"
+                data-speech-lang="de-DE"
+                aria-label="Play pronunciation"
+                title="Play pronunciation"
+            >
+                🔊
+            </button>
+        {% endif %}
+    </div>
 
     {% if card.context %}
         <p class="subtitle" style="margin-top: 10px; margin-bottom: 0;">
