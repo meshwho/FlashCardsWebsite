@@ -177,8 +177,15 @@
 
         <div class="stack-actions" style="margin-top:28px;padding-top:24px;border-top:1px solid var(--border);">
             <button type="submit" class="btn btn-primary">Save deck</button>
+
+            <button type="button" id="copy-ai-check-prompt-btn" class="btn btn-secondary">
+                Copy AI check prompt
+            </button>
+
             <a href="{% url 'deck_detail' deck.id %}" class="btn btn-ghost">Cancel</a>
         </div>
+
+        <p id="copy-ai-check-prompt-status" class="subtitle" style="margin-top:10px;"></p>
     </form>
 
     <div class="danger-zone fade-in-3">
@@ -287,6 +294,177 @@
             }
         }
     });
+
+    const copyAiPromptBtn = document.getElementById("copy-ai-check-prompt-btn");
+    const copyAiPromptStatus = document.getElementById("copy-ai-check-prompt-status");
+
+    function getFieldValue(cardForm, fieldName) {
+        const field = cardForm.querySelector(
+            `[name$="-${fieldName}"]`
+        );
+
+        if (!field) {
+            return "";
+        }
+
+        return (field.value || "").trim();
+    }
+
+    function isCardMarkedForDeletion(cardForm) {
+        const deleteCheckbox = cardForm.querySelector(
+            'input[type="checkbox"][name$="-DELETE"]'
+        );
+
+        return Boolean(deleteCheckbox && deleteCheckbox.checked);
+    }
+
+    function getDeckCardsForAiCheck() {
+        const cardForms = Array.from(
+            cardsContainer.querySelectorAll(".card-form-item")
+        );
+
+        const cards = [];
+
+        cardForms.forEach(function (cardForm) {
+            if (isCardMarkedForDeletion(cardForm)) {
+                return;
+            }
+
+            const question = getFieldValue(cardForm, "question");
+            const answer = getFieldValue(cardForm, "answer");
+            const context = getFieldValue(cardForm, "context");
+
+            const hasArticleCheckbox = cardForm.querySelector(
+                'input[type="checkbox"][name$="-has_article"]'
+            );
+
+            const hasArticle = Boolean(
+                hasArticleCheckbox && hasArticleCheckbox.checked
+            );
+
+            if (!question && !answer && !context) {
+                return;
+            }
+
+            cards.push({
+                question: question,
+                answer: answer,
+                context: context,
+                hasArticle: hasArticle
+            });
+        });
+
+        return cards;
+    }
+
+    function buildAiCheckPrompt(cards) {
+        const deckTitleField = document.querySelector(
+            `[name$="title"]`
+        );
+
+        const deckTitle = deckTitleField
+            ? (deckTitleField.value || "").trim()
+            : "";
+
+        const lines = [];
+
+        lines.push("Ты — эксперт по немецкому языку и преподаватель.");
+        lines.push("");
+        lines.push("Проверь колоду карточек для изучения немецкого языка.");
+        lines.push("");
+        lines.push("Что нужно проверить:");
+        lines.push("1. Правильность немецкого слова или выражения.");
+        lines.push("2. Правильность артикля, если он есть.");
+        lines.push("3. Правильность перевода.");
+        lines.push("4. Орфографию немецкого и перевода.");
+        lines.push("5. Не является ли карточка неоднозначной.");
+        lines.push("6. Нужен ли context для карточки.");
+        lines.push("");
+        lines.push("Как отвечать:");
+        lines.push("- Ответ должен быть минималистичным и понятным.");
+        lines.push("- Если всё хорошо, напиши: «Все ок».");
+        lines.push("- Если есть ошибки, дай только список проблем.");
+        lines.push("- Формат ошибки: номер карточки → проблема → как исправить.");
+        lines.push("- Не переписывай всю колоду.");
+        lines.push("- Не давай длинных объяснений.");
+        lines.push("");
+        lines.push(`Название колоды: ${deckTitle || "без названия"}`);
+        lines.push("");
+        lines.push("Карточки:");
+
+        cards.forEach(function (card, index) {
+            lines.push("");
+            lines.push(`${index + 1}.`);
+            lines.push(`German / Question: ${card.question || "—"}`);
+            lines.push(`Translation / Answer: ${card.answer || "—"}`);
+
+            if (card.context) {
+                lines.push(`Context: ${card.context}`);
+            } else {
+                lines.push("Context: —");
+            }
+
+            lines.push(`Has article: ${card.hasArticle ? "yes" : "no"}`);
+        });
+
+        return lines.join("\n");
+    }
+
+    function copyTextToClipboard(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text);
+        }
+
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        textarea.style.top = "-9999px";
+
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+
+        try {
+            document.execCommand("copy");
+            return Promise.resolve();
+        } catch (error) {
+            return Promise.reject(error);
+        } finally {
+            document.body.removeChild(textarea);
+        }
+    }
+
+    if (copyAiPromptBtn) {
+        copyAiPromptBtn.addEventListener("click", function () {
+            const cards = getDeckCardsForAiCheck();
+
+            if (!cards.length) {
+                if (copyAiPromptStatus) {
+                    copyAiPromptStatus.textContent = "No cards to copy.";
+                }
+
+                return;
+            }
+
+            const promptText = buildAiCheckPrompt(cards);
+
+            copyTextToClipboard(promptText)
+                .then(function () {
+                    if (copyAiPromptStatus) {
+                        copyAiPromptStatus.textContent =
+                            `Copied prompt with ${cards.length} card(s).`;
+                    }
+                })
+                .catch(function () {
+                    if (copyAiPromptStatus) {
+                        copyAiPromptStatus.textContent =
+                            "Could not copy automatically. Please try again.";
+                    }
+                });
+        });
+    }
+
 })();
 </script>
 {% endblock %}

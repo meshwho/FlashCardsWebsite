@@ -12,11 +12,11 @@
 
 <div class="card fade-in-2" style="margin-bottom: 24px;">
     <div class="face-label">Word</div>
-    <div class="card-text">{{ card.question }}</div>
+    <div class="card-text" id="sentence-practice-word">{{ card.question }}</div>
 
     <div style="margin-top: 16px;">
         <div class="face-label" style="margin-bottom: 6px;">Translation</div>
-        <p class="subtitle" style="margin-bottom: 0;">
+        <p class="subtitle" id="sentence-practice-translation" style="margin-bottom: 0;">
             {{ card.answer }}
         </p>
     </div>
@@ -24,10 +24,12 @@
     {% if card.context %}
         <div style="margin-top: 16px;">
             <div class="face-label" style="margin-bottom: 6px;">Context</div>
-            <p class="subtitle" style="margin-bottom: 0;">
+            <p class="subtitle" id="sentence-practice-context" style="margin-bottom: 0;">
                 {{ card.context }}
             </p>
         </div>
+    {% else %}
+        <p id="sentence-practice-context" style="display:none;"></p>
     {% endif %}
 </div>
 
@@ -48,7 +50,153 @@
 
         <div class="practice-done-actions">
             <button type="submit" class="btn btn-primary">Continue</button>
+
+            <button
+                type="button"
+                id="copy-sentence-check-prompt-btn"
+                class="btn btn-secondary"
+            >
+                Copy AI sentence check prompt
+            </button>
         </div>
+
+        <p id="copy-sentence-check-prompt-status" class="subtitle" style="margin-top:10px;"></p>
     </form>
 </div>
+
+<script>
+(function () {
+    const copyBtn = document.getElementById("copy-sentence-check-prompt-btn");
+    const status = document.getElementById("copy-sentence-check-prompt-status");
+
+    function getTextById(id) {
+        const element = document.getElementById(id);
+
+        if (!element) {
+            return "";
+        }
+
+        return (element.textContent || "").trim();
+    }
+
+    function getWrittenSentences() {
+        const fields = Array.from(
+            document.querySelectorAll('textarea[name^="sentence_"]')
+        );
+
+        return fields
+            .map(function (field, index) {
+                return {
+                    number: index + 1,
+                    text: (field.value || "").trim()
+                };
+            })
+            .filter(function (item) {
+                return item.text.length > 0;
+            });
+    }
+
+    function buildSentenceCheckPrompt() {
+        const word = getTextById("sentence-practice-word");
+        const translation = getTextById("sentence-practice-translation");
+        const context = getTextById("sentence-practice-context");
+        const sentences = getWrittenSentences();
+
+        const lines = [];
+
+        lines.push("Ты — эксперт по немецкому языку и преподаватель.");
+        lines.push("");
+        lines.push("Проверь предложения, которые я написал для тренировки немецкого слова.");
+        lines.push("");
+        lines.push("Что нужно проверить:");
+        lines.push("1. Грамматику.");
+        lines.push("2. Порядок слов.");
+        lines.push("3. Орфографию.");
+        lines.push("4. Правильное использование указанного слова.");
+        lines.push("5. Естественность фразы для немецкого языка.");
+        lines.push("6. Соответствие смыслу слова, переводу и context.");
+        lines.push("");
+        lines.push("Как отвечать:");
+        lines.push("- Ответ должен быть минималистичным и понятным.");
+        lines.push("- Если все предложения правильные, напиши: «Все ок».");
+        lines.push("- Если есть ошибки, дай только список проблем.");
+        lines.push("- Формат: номер предложения → ошибка → исправленный вариант.");
+        lines.push("- Не давай длинных объяснений.");
+        lines.push("- Не переписывай правильные предложения.");
+        lines.push("");
+        lines.push(`Слово: ${word || "—"}`);
+        lines.push(`Перевод: ${translation || "—"}`);
+        lines.push(`Context: ${context || "—"}`);
+        lines.push("");
+        lines.push("Предложения:");
+
+        if (!sentences.length) {
+            lines.push("—");
+        } else {
+            sentences.forEach(function (sentence) {
+                lines.push(`${sentence.number}. ${sentence.text}`);
+            });
+        }
+
+        return lines.join("\n");
+    }
+
+    function copyTextToClipboard(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text);
+        }
+
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        textarea.style.top = "-9999px";
+
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+
+        try {
+            document.execCommand("copy");
+            return Promise.resolve();
+        } catch (error) {
+            return Promise.reject(error);
+        } finally {
+            document.body.removeChild(textarea);
+        }
+    }
+
+    if (!copyBtn) {
+        return;
+    }
+
+    copyBtn.addEventListener("click", function () {
+        const sentences = getWrittenSentences();
+
+        if (!sentences.length) {
+            if (status) {
+                status.textContent = "Write at least one sentence first.";
+            }
+
+            return;
+        }
+
+        const promptText = buildSentenceCheckPrompt();
+
+        copyTextToClipboard(promptText)
+            .then(function () {
+                if (status) {
+                    status.textContent =
+                        `Copied prompt with ${sentences.length} sentence(s).`;
+                }
+            })
+            .catch(function () {
+                if (status) {
+                    status.textContent =
+                        "Could not copy automatically. Please try again.";
+                }
+            });
+    });
+})();
+</script>
 {% endblock %}
