@@ -153,6 +153,174 @@ class UserReviewSchedule(models.Model):
         return f"Review schedule for {self.user.username}"
 
 
+class CardActiveState(models.Model):
+    STAGE_PASSIVE = "passive"
+    STAGE_CANDIDATE = "candidate"
+    STAGE_RECALL = "recall"
+    STAGE_PHRASE = "phrase"
+    STAGE_CLOZE = "cloze"
+    STAGE_SENTENCE = "sentence"
+    STAGE_SITUATION = "situation"
+    STAGE_ARGUMENTATION = "argumentation"
+    STAGE_ACTIVE = "active"
+    STAGE_PAUSED = "paused"
+
+    STAGE_CHOICES = [
+        (STAGE_PASSIVE, "Passive"),
+        (STAGE_CANDIDATE, "Candidate"),
+        (STAGE_RECALL, "Recall"),
+        (STAGE_PHRASE, "Phrase"),
+        (STAGE_CLOZE, "Cloze"),
+        (STAGE_SENTENCE, "Sentence"),
+        (STAGE_SITUATION, "Situation"),
+        (STAGE_ARGUMENTATION, "Argumentation"),
+        (STAGE_ACTIVE, "Active"),
+        (STAGE_PAUSED, "Paused"),
+    ]
+
+    card = models.OneToOneField(
+        Card,
+        on_delete=models.CASCADE,
+        related_name="active_state",
+    )
+
+    stage = models.CharField(
+        max_length=32,
+        choices=STAGE_CHOICES,
+        default=STAGE_PASSIVE,
+    )
+
+    # Separate scheduling for active usage.
+    # This is independent from Card.due used by normal FSRS.
+    active_due = models.DateTimeField(null=True, blank=True)
+
+    # Source of truth for the future Active-FSRS layer.
+    # Do NOT mix this with Card.fsrs_state.
+    active_fsrs_state = models.JSONField(default=dict, blank=True)
+
+    active_stability = models.FloatField(default=0.0)
+    active_difficulty = models.FloatField(default=0.0)
+
+    last_active_review = models.DateTimeField(null=True, blank=True)
+    active_started_at = models.DateTimeField(null=True, blank=True)
+    activated_at = models.DateTimeField(null=True, blank=True)
+
+    total_active_attempts = models.PositiveIntegerField(default=0)
+    successful_active_attempts = models.PositiveIntegerField(default=0)
+    failed_active_attempts = models.PositiveIntegerField(default=0)
+    consecutive_active_failures = models.PositiveIntegerField(default=0)
+
+    recall_success_count = models.PositiveIntegerField(default=0)
+    phrase_success_count = models.PositiveIntegerField(default=0)
+    cloze_success_count = models.PositiveIntegerField(default=0)
+    sentence_success_count = models.PositiveIntegerField(default=0)
+    situation_success_count = models.PositiveIntegerField(default=0)
+    argumentation_success_count = models.PositiveIntegerField(default=0)
+
+    last_error_summary = models.TextField(blank=True, default="")
+
+    # Means that this card is currently inside the limited active-practice pipeline.
+    # Candidate cards can wait outside the pipeline until there is free capacity.
+    is_active_pipeline = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["active_due", "card__created_at"]
+
+    def __str__(self):
+        return f"ActiveState(card={self.card_id}, stage={self.stage})"
+
+
+class ActiveUseAttempt(models.Model):
+    SOURCE_MANUAL_RATING = "manual_rating"
+    SOURCE_PASTED_CHATGPT_RESPONSE = "pasted_chatgpt_response"
+
+    SOURCE_CHOICES = [
+        (SOURCE_MANUAL_RATING, "Manual rating"),
+        (SOURCE_PASTED_CHATGPT_RESPONSE, "Pasted ChatGPT response"),
+    ]
+
+    RATING_AGAIN = 1
+    RATING_HARD = 2
+    RATING_GOOD = 3
+    RATING_EASY = 4
+
+    RATING_CHOICES = [
+        (RATING_AGAIN, "Again"),
+        (RATING_HARD, "Hard"),
+        (RATING_GOOD, "Good"),
+        (RATING_EASY, "Easy"),
+    ]
+
+    card = models.ForeignKey(
+        Card,
+        on_delete=models.CASCADE,
+        related_name="active_attempts",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="active_use_attempts",
+    )
+
+    stage = models.CharField(max_length=32)
+    task_type = models.CharField(max_length=32, blank=True, default="")
+
+    generated_prompt = models.TextField(blank=True, default="")
+    user_answer = models.TextField(blank=True, default="")
+    chatgpt_response = models.TextField(blank=True, default="")
+
+    rating = models.PositiveSmallIntegerField(
+        choices=RATING_CHOICES,
+        null=True,
+        blank=True,
+    )
+
+    active_use = models.BooleanField(default=False)
+    is_success = models.BooleanField(default=False)
+
+    error_summary = models.TextField(blank=True, default="")
+
+    source = models.CharField(
+        max_length=32,
+        choices=SOURCE_CHOICES,
+        default=SOURCE_MANUAL_RATING,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return (
+            f"ActiveUseAttempt(user={self.user_id}, "
+            f"card={self.card_id}, stage={self.stage}, rating={self.rating})"
+        )
+
+
+class UserActivePracticeSettings(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="active_practice_settings",
+    )
+
+    enable_active_practice = models.BooleanField(default=True)
+    enable_active_fsrs = models.BooleanField(default=True)
+
+    current_level = models.CharField(max_length=32, default="A2-B1")
+    target_level = models.CharField(max_length=32, default="C1")
+
+    active_tasks_per_day = models.PositiveSmallIntegerField(default=5)
+    new_active_words_per_day = models.PositiveSmallIntegerField(default=1)
+    max_active_pipeline = models.PositiveSmallIntegerField(default=30)
+    active_overdue_pause_threshold = models.PositiveSmallIntegerField(default=15)
+
+    def __str__(self):
+        return f"Active practice settings for {self.user.username}"
+
+
 class ReviewSlot(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 

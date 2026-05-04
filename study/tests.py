@@ -6,11 +6,19 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import Card, Deck
+from .models import (
+    Card,
+    CardActiveState,
+    Deck,
+    ReviewLog,
+    UserActivePracticeSettings,
+)
 from .forms import ReviewScheduleForm
 from .practice_session import get_practice_summary
 from .sentence_logic import sentence_count_for_rating, should_require_sentences
-
+from django.contrib.auth import get_user_model
+from django.core.management import call_command
+from django.test import TestCase
 
 class SentenceLogicTests(TestCase):
     def test_sentence_count_for_rating(self):
@@ -410,3 +418,159 @@ class DeckDeleteViewTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
         self.assertTrue(Deck.objects.filter(id=other_deck.id).exists())
+
+
+class ActiveUseLayerModelTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            username="active_test_user",
+            email="active_test_user@example.com",
+            password="test-password-123",
+        )
+        self.deck = Deck.objects.create(
+            owner=self.user,
+            title="German test deck",
+        )
+
+    def test_card_active_state_is_created_for_new_card(self):
+        card = Card.objects.create(
+            deck=self.deck,
+            question="die Entscheidung",
+            answer="решение",
+            has_article=True,
+        )
+
+        self.assertTrue(hasattr(card, "active_state"))
+        self.assertEqual(card.active_state.stage, CardActiveState.STAGE_PASSIVE)
+
+    def test_saving_card_again_does_not_create_duplicate_active_state(self):
+        card = Card.objects.create(
+            deck=self.deck,
+            question="das Haus",
+            answer="дом",
+            has_article=True,
+        )
+
+        card.question = "das Haus"
+        card.save()
+
+        active_state_count = CardActiveState.objects.filter(card=card).count()
+
+        self.assertEqual(active_state_count, 1)
+
+    def test_user_active_practice_settings_are_created_for_new_user(self):
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="settings_test_user",
+            email="settings_test_user@example.com",
+            password="test-password-123",
+        )
+
+        self.assertTrue(hasattr(user, "active_practice_settings"))
+        self.assertEqual(user.active_practice_settings.current_level, "A2-B1")
+        self.assertEqual(user.active_practice_settings.target_level, "C1")
+        self.assertEqual(user.active_practice_settings.active_tasks_per_day, 5)
+
+    def test_initialize_active_use_command_creates_missing_records(self):
+        card = Card.objects.create(
+            deck=self.deck,
+            question="die Möglichkeit",
+            answer="возможность",
+            has_article=True,
+        )
+
+        # Simulate old data without active state.
+        CardActiveState.objects.filter(card=card).delete()
+        UserActivePracticeSettings.objects.filter(user=self.user).delete()
+
+        self.assertFalse(CardActiveState.objects.filter(card=card).exists())
+        self.assertFalse(
+            UserActivePracticeSettings.objects.filter(user=self.user).exists()
+        )
+
+        call_command("initialize_active_use")
+
+        self.assertTrue(CardActiveState.objects.filter(card=card).exists())
+        self.assertTrue(
+            UserActivePracticeSettings.objects.filter(user=self.user).exists()
+        )
+
+    def test_initialize_active_use_command_is_idempotent(self):
+        card = Card.objects.create(
+            deck=self.deck,
+            question="die Erfahrung",
+            answer="опыт",
+            has_article=True,
+        )
+
+        call_command("initialize_active_use")
+        call_command("initialize_active_use")
+
+        self.assertEqual(CardActiveState.objects.filter(card=card).count(), 1)
+        self.assertEqual(
+            UserActivePracticeSettings.objects.filter(user=self.user).count(),
+            1,
+        )
+
+    def test_initialize_active_use_marks_stable_review_cards_as_candidates(self):
+        now = timezone.now()
+
+        card = Card.objects.create(
+            deck=self.deck,
+            question="die Entscheidung",
+            answer="решение",
+            has_article=True,
+        )
+
+        card.state = Card.STATE_REVIEW
+        card.save(update_fields=["state"])
+
+        ReviewLog.objects.create(
+            card=card,
+            rating=3,  # Good
+            due_before=now,
+            due_after=now,
+        )
+        ReviewLog.objects.create(
+            card=card,
+            rating=4,  # Easy
+            due_before=now,
+            due_after=now,
+        )
+
+        # Simulate old card created before Active Use Layer existed.
+        CardActiveState.objects.filter(card=card).delete()
+
+        call_command("initialize_active_use")
+
+        card.refresh_from_db()
+
+        self.assertEqual(
+            card.active_state.stage,
+            CardActiveState.STAGE_CANDIDATE,
+        )
+        self.assertFalse(card.active_state.is_active_pipeline)
+
+    def test_initialize_active_use_keeps_unstable_cards_passive(self):
+        card = Card.objects.create(
+            deck=self.deck,
+            question="das Problem",
+            answer="проблема",
+            has_article=True,
+        )
+
+        card.state = Card.STATE_LEARNING
+        card.save(update_fields=["state"])
+
+        CardActiveState.objects.filter(card=card).delete()
+
+        call_command("initialize_active_use")
+
+        card.refresh_from_db()
+
+        self.assertEqual(
+            card.active_state.stage,
+            CardActiveState.STAGE_PASSIVE,
+        )
+        self.assertFalse(card.active_state.is_active_pipeline)
