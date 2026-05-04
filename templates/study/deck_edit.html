@@ -358,57 +358,71 @@
     }
 
     function buildAiCheckPrompt(cards) {
-        const deckTitleField = document.querySelector(
-            `[name$="title"]`
-        );
+    const deckTitleField = document.querySelector(
+        `[name$="title"]`
+    );
 
-        const deckTitle = deckTitleField
-            ? (deckTitleField.value || "").trim()
-            : "";
+    const deckTitle = deckTitleField
+        ? (deckTitleField.value || "").trim()
+        : "";
 
-        const lines = [];
+    const lines = [];
 
-        lines.push("Ты — эксперт по немецкому языку и преподаватель.");
+    lines.push("Ты — эксперт по немецкому языку и преподаватель.");
+    lines.push("");
+    lines.push("Проверь колоду карточек для изучения немецкого языка.");
+    lines.push("");
+    lines.push("Что нужно проверить:");
+    lines.push("1. Правильность немецкого слова или выражения.");
+    lines.push("2. Правильность артикля, если он есть.");
+    lines.push("3. Правильность перевода.");
+    lines.push("4. Орфографию немецкого и перевода.");
+    lines.push("5. Не является ли карточка неоднозначной.");
+    lines.push("6. Нужен ли context для карточки.");
+    lines.push("");
+    lines.push("Очень важно:");
+    lines.push("- Не придирайся к переводу, если он в целом правильный и подходит для изучения.");
+    lines.push("- Не предлагай более красивый или более точный перевод, если текущий перевод нормальный.");
+    lines.push("- Исправляй только реальные ошибки: неправильное слово, неправильный артикль, неправильный перевод, орфография, неоднозначность.");
+    lines.push("- Context нужен только тогда, когда без него карточка может быть неоднозначной.");
+    lines.push("- Если context не нужен, не предлагай его добавлять.");
+    lines.push("");
+    lines.push("Как отвечать:");
+    lines.push("- Ответ должен быть минималистичным и понятным.");
+    lines.push("- Если всё хорошо, напиши: «Все ок».");
+    lines.push("- Если есть ошибки, дай только список проблем.");
+    lines.push("- Для каждой проблемной карточки обязательно напиши, как правильно записать карточку.");
+    lines.push("- Формат ошибки:");
+    lines.push("  номер карточки → проблема");
+    lines.push("  Правильно:");
+    lines.push("  Question: ...");
+    lines.push("  Answer: ...");
+    lines.push("  Context: ...");
+    lines.push("- Строку Context пиши только если context действительно нужен.");
+    lines.push("- Не переписывай всю колоду.");
+    lines.push("- Не давай длинных объяснений.");
+    lines.push("");
+    lines.push(`Название колоды: ${deckTitle || "без названия"}`);
+    lines.push("");
+    lines.push("Карточки:");
+
+    cards.forEach(function (card, index) {
         lines.push("");
-        lines.push("Проверь колоду карточек для изучения немецкого языка.");
-        lines.push("");
-        lines.push("Что нужно проверить:");
-        lines.push("1. Правильность немецкого слова или выражения.");
-        lines.push("2. Правильность артикля, если он есть.");
-        lines.push("3. Правильность перевода.");
-        lines.push("4. Орфографию немецкого и перевода.");
-        lines.push("5. Не является ли карточка неоднозначной.");
-        lines.push("6. Нужен ли context для карточки.");
-        lines.push("");
-        lines.push("Как отвечать:");
-        lines.push("- Ответ должен быть минималистичным и понятным.");
-        lines.push("- Если всё хорошо, напиши: «Все ок».");
-        lines.push("- Если есть ошибки, дай только список проблем.");
-        lines.push("- Формат ошибки: номер карточки → проблема → как исправить.");
-        lines.push("- Не переписывай всю колоду.");
-        lines.push("- Не давай длинных объяснений.");
-        lines.push("");
-        lines.push(`Название колоды: ${deckTitle || "без названия"}`);
-        lines.push("");
-        lines.push("Карточки:");
+        lines.push(`${index + 1}.`);
+        lines.push(`German / Question: ${card.question || "—"}`);
+        lines.push(`Translation / Answer: ${card.answer || "—"}`);
 
-        cards.forEach(function (card, index) {
-            lines.push("");
-            lines.push(`${index + 1}.`);
-            lines.push(`German / Question: ${card.question || "—"}`);
-            lines.push(`Translation / Answer: ${card.answer || "—"}`);
+        if (card.context) {
+            lines.push(`Context: ${card.context}`);
+        } else {
+            lines.push("Context: —");
+        }
 
-            if (card.context) {
-                lines.push(`Context: ${card.context}`);
-            } else {
-                lines.push("Context: —");
-            }
+        lines.push(`Has article: ${card.hasArticle ? "yes" : "no"}`);
+    });
 
-            lines.push(`Has article: ${card.hasArticle ? "yes" : "no"}`);
-        });
-
-        return lines.join("\n");
-    }
+    return lines.join("\n");
+}
 
     function copyTextToClipboard(text) {
         if (navigator.clipboard && window.isSecureContext) {
