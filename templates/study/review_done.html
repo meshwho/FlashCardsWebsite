@@ -40,7 +40,9 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Question</th>
+                    <th>Prompt</th>
+                    <th>Expected</th>
+                    <th>Direction</th>
                     <th>Your answer</th>
                     <th>Hints</th>
                     <th>Result</th>
@@ -51,6 +53,8 @@
                 {% for item in summary.reviews %}
                     <tr>
                         <td>{{ item.question|truncatechars:100 }}</td>
+                        <td>{{ item.expected_answer|default:"—"|truncatechars:100 }}</td>
+                        <td>{{ item.direction_label|default:"—" }}</td>
                         <td>{{ item.user_answer|default:"—" }}</td>
                         <td>{{ item.hints_used }}</td>
                         <td>{{ item.rating_label }}</td>

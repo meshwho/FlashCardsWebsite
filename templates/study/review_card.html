@@ -3,41 +3,45 @@
 {% block title %}Review{% endblock %}
 
 {% block content %}
-<div class="page-header fade-in">
+<div class="page-header">
     <h1>Review</h1>
-    <p class="subtitle">Translate the word and use hints only if needed.</p>
+    <p class="subtitle">
+        {{ direction_label }} · {{ remaining_count }} due
+    </p>
 </div>
 
-<div class="review-meta fade-in">
+<div class="review-meta">
     <span class="badge badge-muted">{{ card.deck.title }}</span>
-    <span class="badge badge-accent">{{ remaining_count }} due</span>
+    <span class="badge badge-accent">{{ direction_label }}</span>
 </div>
 
-<div class="flashcard-wrap fade-in-2">
-    <div class="card">
-        <div class="face-label">Question</div>
-        <div class="card-text">{{ card.question }}</div>
+<div class="card">
+    <div class="face-label">Prompt</div>
+    <div class="card-text">{{ prompt_text }}</div>
 
-        {% if card.context %}
-            <p class="subtitle" style="margin-top: 10px; margin-bottom: 0;">
-                Context: {{ card.context }}
-            </p>
-        {% endif %}
-    </div>
+    {% if card.context %}
+        <p class="subtitle" style="margin-top: 10px; margin-bottom: 0;">
+            Context: {{ card.context }}
+        </p>
+    {% endif %}
 </div>
 
 {% if feedback %}
-    <div class="form-error-banner fade-in-2">
+    <div class="form-error-banner" style="margin-top: 16px;">
         <p>{{ feedback }}</p>
     </div>
 {% endif %}
 
-<div class="card fade-in-2">
+<div class="card" style="margin-top: 20px;">
     <form method="post" id="typing-review-form">
         {% csrf_token %}
+
+        <input type="hidden" name="direction" value="{{ direction }}">
         <input type="hidden" name="hints_used" value="{{ hints_used }}">
-        <input type="hidden" name="wrong_attempts_count" value="{{ wrong_attempts_count|default:0 }}">        <div class="form-group">
-            <label for="id_user_answer">Your translation</label>
+        <input type="hidden" name="wrong_attempts_count" value="{{ wrong_attempts_count|default:0 }}">
+
+        <div class="form-group">
+            <label for="id_user_answer">Your answer</label>
             <input
                 type="text"
                 id="id_user_answer"
@@ -56,34 +60,36 @@
         <div class="form-group">
             <label>Hint</label>
             <div class="card" style="padding: 14px 16px; background: var(--surface-2);">
-                <p class="hint-text" style="margin: 0; font-size: 1rem;">{{ hint_text|default:"No hint yet" }}</p>
+                <p class="hint-text" style="margin: 0; font-size: 1rem;">
+                    {{ hint_text|default:"No hint yet" }}
+                </p>
             </div>
         </div>
 
         <div class="review-actions-row">
-            <button type="submit" class="btn btn-primary" name="action" value="check">
+            <button type="submit" name="action" value="check" class="btn btn-primary">
                 Check
             </button>
 
             <button
                 type="submit"
-                class="btn btn-secondary"
                 name="action"
                 value="hint"
+                class="btn btn-secondary"
                 {% if hints_used >= max_hints %}disabled{% endif %}
             >
                 Hint
             </button>
 
-            <button type="submit" class="btn btn-danger" name="action" value="dont_know">
+            <button type="submit" name="action" value="dont_know" class="btn btn-danger">
                 Don't know
             </button>
         </div>
     </form>
 </div>
 
-<div class="card fade-in-3">
-    <div class="face-label">How scoring works</div>
+<div class="card" style="margin-top: 20px;">
+    <div class="face-label">Scoring</div>
     <ul class="review-rules-list">
         <li>0 hints → Easy</li>
         <li>1 hint → Good</li>

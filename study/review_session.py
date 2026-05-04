@@ -19,13 +19,31 @@ def start_review_session(request):
     request.session.modified = True
 
 
-def add_review_to_session(request, card, rating_value, user_answer="", hints_used=0):
+def add_review_to_session(
+    request,
+    card,
+    rating_value,
+    user_answer="",
+    hints_used=0,
+    direction="forward",
+    prompt_text="",
+    expected_answer="",
+):
     summary = request.session.get(SESSION_KEY, {"reviews": []})
+
+    direction_label = (
+        "German → Translation"
+        if direction != "reverse"
+        else "Translation → German"
+    )
 
     summary["reviews"].append(
         {
             "card_id": str(card.id),
-            "question": card.question,
+            "question": prompt_text or card.question,
+            "expected_answer": expected_answer or card.answer,
+            "direction": direction,
+            "direction_label": direction_label,
             "user_answer": user_answer,
             "hints_used": hints_used,
             "rating_value": rating_value,
@@ -36,7 +54,6 @@ def add_review_to_session(request, card, rating_value, user_answer="", hints_use
 
     request.session[SESSION_KEY] = summary
     request.session.modified = True
-
 def get_review_session_summary(request):
     summary = request.session.get(SESSION_KEY, {"reviews": []})
     reviews = summary.get("reviews", [])

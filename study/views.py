@@ -78,6 +78,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from .models import UserReviewSchedule
 from django.forms import formset_factory
 from .card_duplicates import get_ambiguous_cards_for_user
+import random
 
 def _get_posted_non_negative_int(request, key, default=0):
     raw_value = request.POST.get(key, default)
@@ -374,6 +375,32 @@ def review_card_view(request):
 
     remaining_count = get_due_cards_for_user(request.user).count()
 
+    # Direction is random only when a new card is opened.
+    # During POST actions such as Hint, Check, or Don't know,
+    # we must preserve the same direction from the hidden input.
+    if request.method == "POST":
+        direction = request.POST.get("direction") or "forward"
+    else:
+        direction = random.choice(["forward", "reverse"])
+
+    if direction not in {"forward", "reverse"}:
+        direction = "forward"
+
+    if direction == "reverse":
+        prompt_text = card.answer
+        expected_answer = card.question
+        direction_label = "Translation → German"
+        expected_side = "question"
+    else:
+        prompt_text = card.question
+        expected_answer = card.answer
+        direction_label = "German → Translation"
+        expected_side = "answer"
+
+    # If the expected answer is the German side and the card has an article,
+    # hints should be built without revealing the article itself.
+    use_article_logic = card.has_article and expected_side == "question"
+
     hints_used = 0
     wrong_attempts_count = 0
     user_answer = ""
@@ -386,23 +413,35 @@ def review_card_view(request):
         action = request.POST.get("action")
         user_answer = request.POST.get("user_answer", "").strip()
         hints_used = _get_posted_non_negative_int(request, "hints_used", 0)
-        wrong_attempts_count = _get_posted_non_negative_int(request, "wrong_attempts_count", 0)
+        wrong_attempts_count = _get_posted_non_negative_int(
+            request,
+            "wrong_attempts_count",
+            0,
+        )
 
         if action == "hint":
             hints_used = min(hints_used + 1, REVIEW_MAX_HINTS)
-            hint_text = build_hint_mask(card.answer, hints_used)
+            hint_text = build_hint_mask(
+                expected_answer,
+                hints_used,
+                has_article=use_article_logic,
+            )
 
         elif action == "check":
-            if is_correct_answer(user_answer, card.answer):
-                rating_value = get_rating_from_result(hints_used, knows_answer=True)
+            if is_correct_answer(user_answer, expected_answer):
+                rating_value = get_rating_from_result(
+                    hints_used,
+                    knows_answer=True,
+                )
+
                 service = FSRSService()
                 outcome = service.review_card(card, rating_value)
 
                 if should_require_sentences(
-                        had_wrong_attempt=bool(wrong_attempts_count > 0),
-                        had_hint=bool(hints_used > 0),
-                        rating_value=rating_value,
-                        feature_enabled=True,
+                    had_wrong_attempt=bool(wrong_attempts_count > 0),
+                    had_hint=bool(hints_used > 0),
+                    rating_value=rating_value,
+                    feature_enabled=True,
                 ):
                     required_count = sentence_count_for_rating(rating_value)
 
@@ -412,6 +451,9 @@ def review_card_view(request):
                         rating_value,
                         user_answer=user_answer,
                         hints_used=hints_used,
+                        direction=direction,
+                        prompt_text=prompt_text,
+                        expected_answer=expected_answer,
                     )
 
                     set_pending_sentence_task(
@@ -423,6 +465,7 @@ def review_card_view(request):
                         return_url_name="review_card",
                         return_url_kwargs={},
                     )
+
                     return redirect("sentence_practice")
 
                 add_review_to_session(
@@ -431,29 +474,42 @@ def review_card_view(request):
                     rating_value,
                     user_answer=user_answer,
                     hints_used=hints_used,
+                    direction=direction,
+                    prompt_text=prompt_text,
+                    expected_answer=expected_answer,
                 )
 
                 next_card = get_next_due_card_for_user(request.user)
+
                 if next_card is None:
                     return redirect("review_done")
+
                 return redirect("review_card")
-            else:
-                wrong_attempts_count += 1
-                feedback = "Not quite right. Try again or use a hint."
-                feedback_type = "error"
-                hint_text = build_hint_mask(card.answer, hints_used)
+
+            wrong_attempts_count += 1
+            feedback = "Not quite right. Try again or use a hint."
+            feedback_type = "error"
+            hint_text = build_hint_mask(
+                expected_answer,
+                hints_used,
+                has_article=use_article_logic,
+            )
 
         elif action == "dont_know":
-            rating_value = get_rating_from_result(hints_used, knows_answer=False)
+            rating_value = get_rating_from_result(
+                hints_used,
+                knows_answer=False,
+            )
+
             service = FSRSService()
             outcome = service.review_card(card, rating_value)
 
             if should_require_sentences(
-                    had_wrong_attempt=bool(wrong_attempts_count > 0),
-                    had_hint=bool(hints_used > 0),
-                    had_dont_know=True,
-                    rating_value=rating_value,
-                    feature_enabled=True,
+                had_wrong_attempt=bool(wrong_attempts_count > 0),
+                had_hint=bool(hints_used > 0),
+                had_dont_know=True,
+                rating_value=rating_value,
+                feature_enabled=True,
             ):
                 required_count = sentence_count_for_rating(rating_value)
 
@@ -463,6 +519,9 @@ def review_card_view(request):
                     rating_value,
                     user_answer=user_answer,
                     hints_used=hints_used,
+                    direction=direction,
+                    prompt_text=prompt_text,
+                    expected_answer=expected_answer,
                 )
 
                 set_pending_sentence_task(
@@ -474,6 +533,7 @@ def review_card_view(request):
                     return_url_name="review_card",
                     return_url_kwargs={},
                 )
+
                 return redirect("sentence_practice")
 
             add_review_to_session(
@@ -482,28 +542,45 @@ def review_card_view(request):
                 rating_value,
                 user_answer=user_answer,
                 hints_used=hints_used,
+                direction=direction,
+                prompt_text=prompt_text,
+                expected_answer=expected_answer,
             )
 
             answer_revealed = True
-            feedback = f"Correct answer: {card.answer}"
+            feedback = f"Correct answer: {expected_answer}"
             feedback_type = "info"
 
             next_card = get_next_due_card_for_user(request.user)
+
             if next_card is None:
                 return redirect("review_done")
+
             return redirect("review_card")
 
     else:
-        hint_text = build_hint_mask(card.answer, 0)
+        hint_text = build_hint_mask(
+            expected_answer,
+            0,
+            has_article=use_article_logic,
+        )
 
     if hints_used > 0 and not hint_text:
-        hint_text = build_hint_mask(card.answer, hints_used)
+        hint_text = build_hint_mask(
+            expected_answer,
+            hints_used,
+            has_article=use_article_logic,
+        )
 
     return render(
         request,
         "study/review_card.html",
         {
             "card": card,
+            "prompt_text": prompt_text,
+            "expected_answer": expected_answer,
+            "direction": direction,
+            "direction_label": direction_label,
             "remaining_count": remaining_count,
             "hints_used": hints_used,
             "wrong_attempts_count": wrong_attempts_count,
