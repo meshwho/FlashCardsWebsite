@@ -97,49 +97,78 @@
     }
 
     function buildSentenceCheckPrompt() {
-        const word = getTextById("sentence-practice-word");
-        const translation = getTextById("sentence-practice-translation");
-        const context = getTextById("sentence-practice-context");
-        const sentences = getWrittenSentences();
+    const word = getTextById("sentence-practice-word");
+    const translation = getTextById("sentence-practice-translation");
+    const context = getTextById("sentence-practice-context");
+    const sentences = getWrittenSentences();
 
-        const lines = [];
+    const lines = [];
 
-        lines.push("Ты — эксперт по немецкому языку и преподаватель.");
-        lines.push("");
-        lines.push("Проверь предложения, которые я написал для тренировки немецкого слова.");
-        lines.push("");
-        lines.push("Что нужно проверить:");
-        lines.push("1. Грамматику.");
-        lines.push("2. Порядок слов.");
-        lines.push("3. Орфографию.");
-        lines.push("4. Правильное использование указанного слова.");
-        lines.push("5. Естественность фразы для немецкого языка.");
-        lines.push("6. Соответствие смыслу слова, переводу и context.");
-        lines.push("");
-        lines.push("Как отвечать:");
-        lines.push("- Ответ должен быть минималистичным и понятным.");
-        lines.push("- Если все предложения правильные, напиши: «Все ок».");
-        lines.push("- Если есть ошибки, дай только список проблем.");
-        lines.push("- Формат: номер предложения → ошибка → исправленный вариант.");
-        lines.push("- Не давай длинных объяснений.");
-        lines.push("- Не переписывай правильные предложения.");
-        lines.push("");
-        lines.push(`Слово: ${word || "—"}`);
-        lines.push(`Перевод: ${translation || "—"}`);
-        lines.push(`Context: ${context || "—"}`);
-        lines.push("");
-        lines.push("Предложения:");
+    lines.push("Ты — эксперт по немецкому языку и преподаватель.");
+    lines.push("");
+    lines.push("Проверь предложения, которые я написал для тренировки немецкого слова.");
+    lines.push("");
+    lines.push("Что нужно проверить:");
+    lines.push("1. Грамматику.");
+    lines.push("2. Порядок слов.");
+    lines.push("3. Орфографию.");
+    lines.push("4. Падежи, артикли и окончания.");
+    lines.push("5. Правильное использование указанного слова.");
+    lines.push("6. Естественность фразы для немецкого языка.");
+    lines.push("7. Соответствие смыслу слова, переводу и context.");
+    lines.push("");
+    lines.push("Как отвечать:");
+    lines.push("- Отвечай спокойно, понятно и немного расслабленно, как хороший преподаватель.");
+    lines.push("- Не будь слишком строгим и не придирайся к мелочам, если предложение в целом правильное.");
+    lines.push("- Если все предложения правильные, напиши: «Все ок» и можешь добавить короткий ободряющий комментарий.");
+    lines.push("- Если есть ошибки, разбери только предложения с ошибками.");
+    lines.push("- Не переписывай правильные предложения.");
+    lines.push("- Для каждого ошибочного предложения сначала дай исправленный вариант.");
+    lines.push("- Потом объясни, что было не так, почему это ошибка и как избежать такой ошибки в будущем.");
+    lines.push("- Объяснение должно быть полезным, но не академически сухим.");
+    lines.push("- Можно объяснять простыми словами и давать маленькие правила или запоминалки.");
+    lines.push("- Если мой вариант грамматически допустим, но звучит неестественно, так и напиши: «Так можно, но естественнее будет...».");
+    lines.push("- Если ошибка типичная для изучающих немецкий, обязательно укажи это и объясни, на что обращать внимание.");
+    lines.push("");
+    lines.push("Формат ответа:");
+    lines.push("");
+    lines.push("Предложение №...");
+    lines.push("Исправленный вариант:");
+    lines.push("...");
+    lines.push("");
+    lines.push("Что было не так:");
+    lines.push("- ...");
+    lines.push("");
+    lines.push("Почему так:");
+    lines.push("- ...");
+    lines.push("");
+    lines.push("Как запомнить / избегать в будущем:");
+    lines.push("- ...");
+    lines.push("");
+    lines.push("Важно:");
+    lines.push("- Объясняй на русском языке.");
+    lines.push("- Немецкие исправленные предложения пиши на немецком.");
+    lines.push("- Не меняй смысл предложения без необходимости.");
+    lines.push("- Не делай ответ слишком коротким: мне важно понять ошибку.");
+    lines.push("- Но и не пиши длинную лекцию: объясняй по делу.");
+    lines.push("- Если ошибок несколько, разбери их отдельно.");
+    lines.push("");
+    lines.push(`Слово: ${word || "—"}`);
+    lines.push(`Перевод: ${translation || "—"}`);
+    lines.push(`Context: ${context || "—"}`);
+    lines.push("");
+    lines.push("Предложения:");
 
-        if (!sentences.length) {
-            lines.push("—");
-        } else {
-            sentences.forEach(function (sentence) {
-                lines.push(`${sentence.number}. ${sentence.text}`);
-            });
-        }
-
-        return lines.join("\n");
+    if (!sentences.length) {
+        lines.push("—");
+    } else {
+        sentences.forEach(function (sentence) {
+            lines.push(`${sentence.number}. ${sentence.text}`);
+        });
     }
+
+    return lines.join("\n");
+}
 
     function copyTextToClipboard(text) {
         if (navigator.clipboard && window.isSecureContext) {
