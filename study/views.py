@@ -590,6 +590,8 @@ def review_card_view(request):
             "feedback": feedback,
             "feedback_type": feedback_type,
             "answer_revealed": answer_revealed,
+            "can_speak_prompt": direction != "reverse",
+            "speech_text": prompt_text if direction != "reverse" else "",
         },
     )
 
@@ -957,6 +959,8 @@ def deck_practice_typing_view(request, deck_id):
             "hint_text": hint_text,
             "user_answer": user_answer,
             "feedback": feedback,
+            "can_speak_prompt": direction != "reverse",
+            "speech_text": qa["prompt"] if direction != "reverse" else "",
         },
     )
 
