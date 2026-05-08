@@ -91,6 +91,7 @@ def build_words_context_prompt(selected_cards, distractor_cards, text_level):
     lines.append("")
     lines.append("Требования к упражнениям:")
     lines.append("- Для каждого MAIN WORD создай одно задание с пропуском.")
+    lines.append("- Items должны идти строго в том же порядке, что и MAIN WORDS.")
     lines.append("- blank_text должен содержать 2–3 связанные предложения из текста.")
     lines.append("- В blank_text должен быть ровно один пропуск: ____")
     lines.append("- Для каждого задания дай ровно 4 варианта ответа.")
@@ -115,7 +116,6 @@ def build_words_context_prompt(selected_cards, distractor_cards, text_level):
     lines.append('  "summary": "Короткое summary на русском языке.",')
     lines.append('  "items": [')
     lines.append("    {")
-    lines.append('      "card_id": "id основной карточки",')
     lines.append('      "word": "исходное слово из MAIN WORDS",')
     lines.append('      "translation": "перевод",')
     lines.append('      "context": "context или пустая строка",')
@@ -132,7 +132,6 @@ def build_words_context_prompt(selected_cards, distractor_cards, text_level):
     for index, card in enumerate(selected_cards, start=1):
         lines.append("")
         lines.append(f"{index}.")
-        lines.append(f'card_id: {card["id"]}')
         lines.append(f'word: {card["word"]}')
         lines.append(f'translation: {card["translation"]}')
         lines.append(f'context: {card["context"] or ""}')
@@ -207,27 +206,42 @@ def validate_words_context_payload(payload, selected_cards):
     if not isinstance(items, list) or not items:
         raise ValueError("JSON field items must be a non-empty list.")
 
-    selected_ids = {card["id"] for card in selected_cards}
+    if len(items) != len(selected_cards):
+        raise ValueError(
+            f"JSON field items must contain exactly {len(selected_cards)} item(s), "
+            "one for each MAIN WORD."
+        )
+
     cleaned_items = []
 
     for index, item in enumerate(items, start=1):
         if not isinstance(item, dict):
             raise ValueError(f"Item {index} must be an object.")
 
-        card_id = str(item.get("card_id") or "").strip()
-        word = (item.get("word") or "").strip()
-        translation = (item.get("translation") or "").strip()
-        context = (item.get("context") or "").strip()
+        selected_card = selected_cards[index - 1]
+
+        word = (item.get("word") or selected_card.get("word") or "").strip()
+        translation = (
+            item.get("translation")
+            or selected_card.get("translation")
+            or ""
+        ).strip()
+        context = (
+            item.get("context")
+            or selected_card.get("context")
+            or ""
+        ).strip()
+
         sentence = (item.get("sentence") or "").strip()
         blank_text = (item.get("blank_text") or "").strip()
         correct_option = (item.get("correct_option") or "").strip()
         options = item.get("options")
 
-        if card_id not in selected_ids:
-            raise ValueError(f"Item {index} has unknown card_id: {card_id}")
-
         if "____" not in blank_text:
             raise ValueError(f"Item {index} blank_text must contain ____.")
+
+        if blank_text.count("____") != 1:
+            raise ValueError(f"Item {index} blank_text must contain exactly one ____.")
 
         if not correct_option:
             raise ValueError(f"Item {index} correct_option is required.")
@@ -246,15 +260,30 @@ def validate_words_context_payload(payload, selected_cards):
         if len(cleaned_options) != 4:
             raise ValueError(f"Item {index} options must contain exactly 4 options.")
 
-        if not any(
-            normalize_option_text(option) == normalize_option_text(correct_option)
+        normalized_options = [
+            normalize_option_text(option)
             for option in cleaned_options
-        ):
-            raise ValueError(f"Item {index} options must include correct_option.")
+        ]
+
+        if len(set(normalized_options)) != 4:
+            raise ValueError(f"Item {index} options must contain 4 unique options.")
+
+        correct_matches = sum(
+            1
+            for option in cleaned_options
+            if normalize_option_text(option) == normalize_option_text(correct_option)
+        )
+
+        if correct_matches != 1:
+            raise ValueError(
+                f"Item {index} options must include correct_option exactly once."
+            )
 
         cleaned_items.append(
             {
-                "card_id": card_id,
+                # card_id больше не нужен в JSON, но можно сохранить его внутри session
+                # по порядку MAIN WORDS, чтобы не ломать будущую отладку.
+                "card_id": selected_card.get("id", ""),
                 "word": word,
                 "translation": translation,
                 "context": context,
