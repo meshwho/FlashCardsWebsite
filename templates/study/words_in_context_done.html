@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Words in context complete{% endblock %}
+
+{% block content %}
+<div style="max-width:760px;margin:0 auto;" class="fade-in">
+    <div style="text-align:center;padding:48px 24px 40px;">
+        <div style="font-size:2.5rem;margin-bottom:12px;">✅</div>
+        <h1>Words in context complete!</h1>
+        <p style="margin-top:6px;">
+            You answered
+            <strong style="color:var(--text);">{{ correct_count }}</strong>
+            out of
+            <strong style="color:var(--text);">{{ total_count }}</strong>
+            correctly.
+        </p>
+    </div>
+
+    <div class="summary-grid fade-in-2">
+        <div class="summary-stat s-good">
+            <div class="s-value">{{ correct_count }}</div>
+            <div class="s-label">Correct</div>
+        </div>
+
+        <div class="summary-stat s-again">
+            <div class="s-value">{{ wrong_count }}</div>
+            <div class="s-label">Wrong</div>
+        </div>
+    </div>
+
+    {% if summary_text %}
+        <div class="card fade-in-2" style="margin-bottom:20px;">
+            <div class="face-label">Summary</div>
+            <p style="margin-bottom:0;">{{ summary_text }}</p>
+        </div>
+    {% endif %}
+
+    {% if full_text %}
+        <div class="card fade-in-2" style="margin-bottom:20px;">
+            <div class="face-label">Full text</div>
+            <p style="margin-bottom:0;white-space:pre-wrap;">{{ full_text }}</p>
+        </div>
+    {% endif %}
+
+    {% if results %}
+        <h2 style="margin-bottom:16px;">Results</h2>
+
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Text</th>
+                        <th>Your answer</th>
+                        <th>Correct answer</th>
+                        <th>Result</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in results %}
+                        <tr>
+                            <td>{{ item.blank_text|truncatechars:120 }}</td>
+                            <td>{{ item.selected_answer|default:"—" }}</td>
+                            <td>{{ item.correct_answer }}</td>
+                            <td>
+                                {% if item.is_correct %}
+                                    <span class="badge badge-green">Correct</span>
+                                {% else %}
+                                    <span class="badge badge-red">Wrong</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    <div class="stack-actions" style="justify-content:center;margin-top:32px;">
+        <a href="{% url 'words_in_context_setup' %}" class="btn btn-primary">
+            Practice again
+        </a>
+        <a href="{% url 'study_today' %}" class="btn btn-secondary">
+            Back to Study
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -79,6 +79,21 @@ from .models import UserReviewSchedule
 from django.forms import formset_factory
 from .card_duplicates import get_ambiguous_cards_for_user
 import random
+from .words_context import (
+    DEFAULT_WORDS_CONTEXT_LEVEL,
+    MAX_WORDS_IN_CONTEXT,
+    MIN_WORDS_IN_CONTEXT,
+    WORDS_CONTEXT_LEVELS,
+    WORDS_CONTEXT_SESSION_KEY,
+    build_options_for_item,
+    build_words_context_prompt,
+    choose_random_cards_for_context,
+    extract_json_from_ai_response,
+    is_correct_context_answer,
+    serialize_card_for_context,
+    validate_words_context_payload,
+)
+
 
 def _get_posted_non_negative_int(request, key, default=0):
     raw_value = request.POST.get(key, default)
@@ -1510,5 +1525,229 @@ def ambiguous_cards_view(request):
         {
             "rows": rows,
             "formset": formset,
+        },
+    )
+
+
+@login_required
+def words_in_context_setup_view(request):
+    available_cards_count = (
+        Card.objects
+        .filter(deck__owner=request.user)
+        .exclude(question__exact="")
+        .exclude(answer__exact="")
+        .count()
+    )
+
+    selected_level = DEFAULT_WORDS_CONTEXT_LEVEL
+
+    if request.method == "POST":
+        raw_count = request.POST.get("word_count", MIN_WORDS_IN_CONTEXT)
+        selected_level = request.POST.get("text_level") or DEFAULT_WORDS_CONTEXT_LEVEL
+
+        if selected_level not in WORDS_CONTEXT_LEVELS:
+            selected_level = DEFAULT_WORDS_CONTEXT_LEVEL
+
+        try:
+            word_count = int(raw_count)
+        except (TypeError, ValueError):
+            word_count = MIN_WORDS_IN_CONTEXT
+
+        word_count = max(MIN_WORDS_IN_CONTEXT, min(word_count, MAX_WORDS_IN_CONTEXT))
+
+        selected_cards = choose_random_cards_for_context(request.user, word_count)
+
+        if len(selected_cards) < MIN_WORDS_IN_CONTEXT:
+            messages.error(
+                request,
+                "You need at least 4 cards to start Words in context.",
+            )
+            return redirect("words_in_context_setup")
+
+        if len(selected_cards) < word_count:
+            messages.warning(
+                request,
+                f"Only {len(selected_cards)} suitable cards were found.",
+            )
+
+        request.session[WORDS_CONTEXT_SESSION_KEY] = {
+            "selected_cards": [
+                serialize_card_for_context(card)
+                for card in selected_cards
+            ],
+            "selected_level": selected_level,
+            "title": "",
+            "level": selected_level,
+            "full_text": "",
+            "summary": "",
+            "items": [],
+            "current_index": 0,
+            "results": [],
+        }
+        request.session.modified = True
+
+        return redirect("words_in_context_prompt")
+
+    return render(
+        request,
+        "study/words_in_context_setup.html",
+        {
+            "available_cards_count": available_cards_count,
+            "min_words": MIN_WORDS_IN_CONTEXT,
+            "max_words": MAX_WORDS_IN_CONTEXT,
+            "default_words": min(8, max(MIN_WORDS_IN_CONTEXT, available_cards_count)),
+            "levels": WORDS_CONTEXT_LEVELS,
+            "selected_level": selected_level,
+        },
+    )
+
+@login_required
+def words_in_context_prompt_view(request):
+    session_data = request.session.get(WORDS_CONTEXT_SESSION_KEY)
+
+    if not session_data or not session_data.get("selected_cards"):
+        return redirect("words_in_context_setup")
+
+    selected_cards = session_data["selected_cards"]
+    selected_level = session_data.get("selected_level") or DEFAULT_WORDS_CONTEXT_LEVEL
+
+    ai_prompt = build_words_context_prompt(selected_cards, selected_level)
+    ai_response = ""
+
+    if request.method == "POST":
+        ai_response = request.POST.get("ai_response", "")
+
+        try:
+            payload = extract_json_from_ai_response(ai_response)
+            cleaned_payload = validate_words_context_payload(
+                payload,
+                selected_cards,
+            )
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        else:
+            session_data.update(cleaned_payload)
+            session_data["current_index"] = 0
+            session_data["results"] = []
+            session_data["level"] = cleaned_payload.get("level") or selected_level
+
+            request.session[WORDS_CONTEXT_SESSION_KEY] = session_data
+            request.session.modified = True
+
+            return redirect("words_in_context_practice")
+
+    return render(
+        request,
+        "study/words_in_context_prompt.html",
+        {
+            "selected_cards": selected_cards,
+            "selected_level": selected_level,
+            "ai_prompt": ai_prompt,
+            "ai_response": ai_response,
+        },
+    )
+
+
+@login_required
+def words_in_context_practice_view(request):
+    session_data = request.session.get(WORDS_CONTEXT_SESSION_KEY)
+
+    if not session_data or not session_data.get("items"):
+        return redirect("words_in_context_prompt")
+
+    items = session_data["items"]
+    current_index = session_data.get("current_index", 0)
+
+    if current_index >= len(items):
+        return redirect("words_in_context_done")
+
+    current_item = items[current_index]
+    options = build_options_for_item(items, current_index)
+
+    feedback = ""
+
+    if request.method == "POST":
+        selected_answer = (request.POST.get("answer") or "").strip()
+        correct_answer = current_item["correct_option"]
+
+        is_correct = is_correct_context_answer(
+            selected_answer,
+            correct_answer,
+        )
+
+        if is_correct:
+            result = {
+                "blank_text": current_item["blank_text"],
+                "selected_answer": selected_answer,
+                "correct_answer": correct_answer,
+                "is_correct": True,
+                "attempts_count": len(current_item.get("attempted_options", [])) + 1,
+                "wrong_attempts": current_item.get("attempted_options", []),
+            }
+
+            session_data.setdefault("results", []).append(result)
+            session_data["current_index"] = current_index + 1
+
+            request.session[WORDS_CONTEXT_SESSION_KEY] = session_data
+            request.session.modified = True
+
+            if session_data["current_index"] >= len(items):
+                return redirect("words_in_context_done")
+
+            return redirect("words_in_context_practice")
+
+        attempted_options = current_item.setdefault("attempted_options", [])
+
+        if selected_answer and selected_answer not in attempted_options:
+            attempted_options.append(selected_answer)
+
+        items[current_index] = current_item
+        session_data["items"] = items
+
+        request.session[WORDS_CONTEXT_SESSION_KEY] = session_data
+        request.session.modified = True
+
+        feedback = "Not quite. Try another option."
+
+    return render(
+        request,
+        "study/words_in_context_practice.html",
+        {
+            "title": session_data.get("title") or "Words in context",
+            "level": session_data.get("level") or "A2-B1",
+            "current_item": current_item,
+            "options": options,
+            "attempted_options": current_item.get("attempted_options", []),
+            "feedback": feedback,
+            "current_number": current_index + 1,
+            "total_count": len(items),
+        },
+    )
+
+
+@login_required
+def words_in_context_done_view(request):
+    session_data = request.session.get(WORDS_CONTEXT_SESSION_KEY)
+
+    if not session_data:
+        return redirect("words_in_context_setup")
+
+    results = session_data.get("results", [])
+    total_count = len(results)
+    correct_count = sum(1 for item in results if item.get("is_correct"))
+    wrong_count = total_count - correct_count
+
+    return render(
+        request,
+        "study/words_in_context_done.html",
+        {
+            "title": session_data.get("title") or "Words in context",
+            "level": session_data.get("level") or "A2-B1",
+            "summary_text": session_data.get("summary") or "",
+            "full_text": session_data.get("full_text") or "",
+            "results": results,
+            "total_count": total_count,
+            "correct_count": correct_count,
+            "wrong_count": wrong_count,
         },
     )

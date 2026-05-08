@@ -1656,4 +1656,14 @@ body::-webkit-scrollbar {
     .notification-status {
         display: none;
     }
+
+
+.article-choice-btn.context-option-disabled,
+.article-choice-btn:disabled.context-option-disabled {
+    opacity: 0.35;
+    filter: grayscale(1);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
 }

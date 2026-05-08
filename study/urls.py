@@ -25,6 +25,10 @@ from .views import (
     save_push_subscription_view,
     delete_push_subscription_view,
     ambiguous_cards_view,
+    words_in_context_setup_view,
+    words_in_context_prompt_view,
+    words_in_context_practice_view,
+    words_in_context_done_view,
 )
 
 urlpatterns = [
@@ -57,4 +61,24 @@ urlpatterns = [
     path("push/subscribe/", save_push_subscription_view, name="push_subscribe"),
     path("push/unsubscribe/", delete_push_subscription_view, name="push_unsubscribe"),
     path("decks/duplicates/", ambiguous_cards_view, name="ambiguous_cards"),
+    path(
+        "study/words-in-context/",
+        words_in_context_setup_view,
+        name="words_in_context_setup",
+    ),
+    path(
+        "study/words-in-context/prompt/",
+        words_in_context_prompt_view,
+        name="words_in_context_prompt",
+    ),
+    path(
+        "study/words-in-context/practice/",
+        words_in_context_practice_view,
+        name="words_in_context_practice",
+    ),
+    path(
+        "study/words-in-context/done/",
+        words_in_context_done_view,
+        name="words_in_context_done",
+    ),
 ]

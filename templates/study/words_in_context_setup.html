@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Words in context — FlashCards{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <h1>Words in context</h1>
+    <p class="subtitle">
+        Choose words and text level, generate one interesting German text with ChatGPT, and practice words in context.
+    </p>
+</div>
+
+<div class="card fade-in-2">
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label for="id_word_count">Number of words</label>
+            <input
+                type="number"
+                id="id_word_count"
+                name="word_count"
+                min="{{ min_words }}"
+                max="{{ max_words }}"
+                value="{{ default_words }}"
+            >
+            <p class="subtitle" style="margin-top:8px;">
+                Available cards: {{ available_cards_count }}.
+                Minimum: {{ min_words }}. Maximum: {{ max_words }}.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="id_text_level">Text level</label>
+            <select id="id_text_level" name="text_level">
+                {% for level in levels %}
+                    <option value="{{ level }}" {% if level == selected_level %}selected{% endif %}>
+                        {{ level }}
+                    </option>
+                {% endfor %}
+            </select>
+            <p class="subtitle" style="margin-top:8px;">
+                ChatGPT will generate the text according to this level.
+            </p>
+        </div>
+
+        <div class="practice-done-actions">
+            <button type="submit" class="btn btn-primary">
+                Select random words
+            </button>
+            <a href="{% url 'study_today' %}" class="btn btn-ghost">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
