@@ -4,16 +4,29 @@
 {% block content %}
 <div class="card study-today-wrap fade-in">
     {% if due_count > 0 %}
-    <div class="due-count">{{ due_count }}</div>
-    <p class="due-label">card{{ due_count|pluralize }} due for review</p>
-    <a href="{% url 'study_start' %}" class="btn btn-primary" style="padding:12px 32px;font-size:1rem;">Start review →</a>
+        <div class="due-count">{{ due_count }}</div>
+        <p class="due-label">card{{ due_count|pluralize }} due for review</p>
+        <a href="{% url 'study_start' %}" class="btn btn-primary" style="padding:12px 32px;font-size:1rem;">
+            Start review →
+        </a>
     {% else %}
-    <div style="padding:24px 0;">
-        <div style="font-size:2.5rem;margin-bottom:16px;">🎉</div>
-        <h2 style="margin-bottom:8px;">All done for now!</h2>
-        <p style="margin-bottom:24px;">No cards are due. Check back later or explore your decks.</p>
-        <a href="{% url 'deck_list' %}" class="btn btn-secondary">Browse decks</a>
-    </div>
+        <div style="padding:24px 0;">
+            <div style="font-size:2.5rem;margin-bottom:16px;">🎉</div>
+            <h2 style="margin-bottom:8px;">All done for now!</h2>
+            <p style="margin-bottom:24px;">No cards are due. Check back later or explore your decks.</p>
+            <a href="{% url 'deck_list' %}" class="btn btn-secondary">Browse decks</a>
+        </div>
     {% endif %}
+</div>
+
+<div class="card fade-in-2" style="max-width:480px;margin:20px auto 0;text-align:center;">
+    <div style="font-size:2rem;margin-bottom:12px;">📖</div>
+    <h2 style="margin-bottom:8px;">Words in context</h2>
+    <p style="margin-bottom:20px;">
+        Practice your words inside one AI-generated German text with fill-in-the-blank questions.
+    </p>
+    <a href="{% url 'words_in_context_setup' %}" class="btn btn-secondary">
+        Start words in context
+    </a>
 </div>
 {% endblock %}

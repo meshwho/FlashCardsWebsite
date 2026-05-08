@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Words in context practice{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <h1>{{ title }}</h1>
+    <p class="subtitle">
+        {{ level }} · Question {{ current_number }} / {{ total_count }}
+    </p>
+</div>
+
+<div class="card fade-in-2" style="margin-bottom:20px;">
+    <div class="face-label">Text excerpt</div>
+    <div class="card-text">
+        {{ current_item.blank_text }}
+    </div>
+</div>
+
+{% if feedback %}
+    <div class="form-error-banner fade-in-2" style="margin-bottom:16px;">
+        <p>{{ feedback }}</p>
+    </div>
+{% endif %}
+
+<form method="post" class="article-choice-grid fade-in-3">
+    {% csrf_token %}
+
+    {% for option in options %}
+        <button
+            type="submit"
+            name="answer"
+            value="{{ option }}"
+            class="article-choice-btn {% if option in attempted_options %}context-option-disabled{% endif %}"
+            {% if option in attempted_options %}disabled{% endif %}
+        >
+            <span class="article-choice-main">{{ option }}</span>
+        </button>
+    {% endfor %}
+</form>
+{% endblock %}
