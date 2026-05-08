@@ -1631,6 +1631,7 @@ def words_in_context_prompt_view(request):
         distractor_cards,
         selected_level,
     )
+
     ai_response = ""
 
     if request.method == "POST":
@@ -1660,6 +1661,7 @@ def words_in_context_prompt_view(request):
         "study/words_in_context_prompt.html",
         {
             "selected_cards": selected_cards,
+            "distractor_cards": distractor_cards,
             "selected_level": selected_level,
             "ai_prompt": ai_prompt,
             "ai_response": ai_response,
