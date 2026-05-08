@@ -10,6 +10,16 @@
     </p>
 </div>
 
+{% if messages %}
+    <div class="fade-in-2" style="margin-bottom: 20px;">
+        {% for message in messages %}
+            <div class="form-error-banner">
+                <p>{{ message }}</p>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
 <div class="card fade-in-2" style="margin-bottom:20px;">
     <div class="form-group">
         <label for="id_ai_prompt">Prompt for ChatGPT</label>
