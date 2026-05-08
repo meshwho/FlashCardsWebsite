@@ -162,9 +162,20 @@ def build_words_context_prompt(selected_cards, distractor_cards, text_level):
     lines.append("- Это плохой вопрос, потому что туда могут подойти несколько слов: 'der Bank', 'dem Büro', 'der Universität' и другие.")
     lines.append("- Такие задания создавать нельзя.")
     lines.append("")
-    lines.append("Верни ответ строго в JSON, без markdown, без ```json, без комментариев.")
+    lines.append("Верни ответ строго в валидном JSON.")
+    lines.append("Очень важно для JSON:")
+    lines.append("- Используй только обычные двойные кавычки ASCII: \"")
+    lines.append("- Не используй типографские кавычки: “ ” „ « »")
+    lines.append("- Не используй одинарные кавычки для JSON-ключей или строк.")
+    lines.append("- Не добавляй markdown.")
+    lines.append("- Не добавляй ```json.")
+    lines.append("- Не добавляй комментарии до или после JSON.")
+    lines.append("- Не добавляй запятые после последнего элемента массива или объекта.")
+    lines.append("- Ответ должен начинаться с { и заканчиваться }.")
+    lines.append("- Перед отправкой мысленно проверь, что JSON можно разобрать через JSON.parse().")
     lines.append("")
     lines.append("Формат JSON:")
+    lines.append("Пример синтаксиса: все ключи и строки должны быть в обычных кавычках, например \"title\", а не “title”.")
     lines.append("{")
     lines.append('  "title": "Название текста",')
     lines.append(f'  "level": "{text_level}",')
@@ -234,8 +245,23 @@ def extract_json_from_ai_response(raw_text):
     if not text:
         raise ValueError("AI response is empty.")
 
+    # Remove markdown code fences if ChatGPT returns them anyway.
     text = re.sub(r"^```(?:json)?", "", text.strip(), flags=re.IGNORECASE).strip()
     text = re.sub(r"```$", "", text.strip()).strip()
+
+    # ChatGPT or mobile keyboards may sometimes produce typographic quotes.
+    # JSON requires normal ASCII double quotes: "
+    text = (
+        text
+        .replace("“", '"')
+        .replace("”", '"')
+        .replace("„", '"')
+        .replace("«", '"')
+        .replace("»", '"')
+        .replace("‘", "'")
+        .replace("’", "'")
+        .replace("\u00a0", " ")
+    )
 
     first_brace = text.find("{")
     last_brace = text.rfind("}")
