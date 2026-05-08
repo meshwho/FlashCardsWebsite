@@ -11,33 +11,6 @@
 </div>
 
 <div class="card fade-in-2" style="margin-bottom:20px;">
-    <div class="face-label">Selected words</div>
-
-    <div class="table-wrap table-mobile-cards" style="margin-top:12px;">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Word</th>
-                    <th>Translation</th>
-                    <th>Context</th>
-                    <th>Deck</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for card in selected_cards %}
-                    <tr>
-                        <td data-label="Word">{{ card.word }}</td>
-                        <td data-label="Translation">{{ card.translation }}</td>
-                        <td data-label="Context">{{ card.context|default:"—" }}</td>
-                        <td data-label="Deck">{{ card.deck }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<div class="card fade-in-2" style="margin-bottom:20px;">
     <div class="form-group">
         <label for="id_ai_prompt">Prompt for ChatGPT</label>
         <textarea id="id_ai_prompt" rows="18" readonly>{{ ai_prompt }}</textarea>

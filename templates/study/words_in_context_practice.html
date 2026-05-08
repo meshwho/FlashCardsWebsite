@@ -17,25 +17,223 @@
     </div>
 </div>
 
-{% if feedback %}
-    <div class="form-error-banner fade-in-2" style="margin-bottom:16px;">
-        <p>{{ feedback }}</p>
-    </div>
-{% endif %}
+<div
+    id="words-context-feedback"
+    class="form-error-banner fade-in-2"
+    style="margin-bottom:16px; {% if not feedback %}display:none;{% endif %}"
+>
+    <p id="words-context-feedback-text">{{ feedback }}</p>
+</div>
 
-<form method="post" class="article-choice-grid fade-in-3">
+<div
+    id="words-context-success"
+    class="card fade-in-2"
+    style="margin-bottom:16px; display:none; border-color: rgba(34, 197, 94, 0.35);"
+>
+    <div class="face-label">Correct</div>
+
+    <p id="words-context-success-text" style="margin-bottom:12px;">
+        Correct!
+    </p>
+
+    <div style="padding:14px 16px; background:var(--surface-2); border-radius:14px;">
+        <p id="words-context-full-sentence" style="margin:0;"></p>
+    </div>
+
+    <div class="practice-done-actions" style="margin-top:16px;">
+        <button type="button" id="words-context-next-btn" class="btn btn-primary">
+            Next
+        </button>
+    </div>
+</div>
+
+<form method="post" id="words-context-form" class="article-choice-grid words-context-grid fade-in-3">
     {% csrf_token %}
 
-    {% for option in options %}
+    {% for option in option_rows %}
         <button
-            type="submit"
-            name="answer"
-            value="{{ option }}"
-            class="article-choice-btn {% if option in attempted_options %}context-option-disabled{% endif %}"
-            {% if option in attempted_options %}disabled{% endif %}
+            type="button"
+            data-answer="{{ option.text }}"
+            class="article-choice-btn words-context-option {% if option.is_attempted %}context-option-disabled{% endif %}"
+            {% if option.is_attempted %}disabled aria-disabled="true"{% endif %}
+            {% if option.is_attempted %}
+                style="opacity:0.35;filter:grayscale(1);cursor:not-allowed;box-shadow:none;transform:none;"
+            {% endif %}
         >
-            <span class="article-choice-main">{{ option }}</span>
+            <span class="article-choice-main">{{ option.text }}</span>
         </button>
     {% endfor %}
 </form>
+
+<script>
+(function () {
+    const form = document.getElementById("words-context-form");
+    const feedbackBox = document.getElementById("words-context-feedback");
+    const feedbackText = document.getElementById("words-context-feedback-text");
+    const successBox = document.getElementById("words-context-success");
+    const successText = document.getElementById("words-context-success-text");
+    const fullSentence = document.getElementById("words-context-full-sentence");
+    const nextBtn = document.getElementById("words-context-next-btn");
+
+    let nextUrl = "";
+
+    if (!form) {
+        return;
+    }
+
+    function getCsrfToken() {
+        const input = form.querySelector('input[name="csrfmiddlewaretoken"]');
+
+        if (input && input.value) {
+            return input.value;
+        }
+
+        return "";
+    }
+
+    function markOptionAsWrong(button) {
+        button.classList.add("context-option-disabled");
+        button.disabled = true;
+        button.setAttribute("aria-disabled", "true");
+
+        button.style.opacity = "0.35";
+        button.style.filter = "grayscale(1)";
+        button.style.cursor = "not-allowed";
+        button.style.boxShadow = "none";
+        button.style.transform = "none";
+    }
+
+    function markOptionAsCorrect(button) {
+        button.style.borderColor = "rgba(34, 197, 94, 0.55)";
+        button.style.boxShadow = "0 0 0 3px rgba(34, 197, 94, 0.12)";
+    }
+
+    function showFeedback(message) {
+        if (!feedbackBox || !feedbackText) {
+            return;
+        }
+
+        feedbackText.textContent = message || "Not quite. Try another option.";
+        feedbackBox.style.display = "";
+    }
+
+    function hideFeedback() {
+        if (!feedbackBox) {
+            return;
+        }
+
+        feedbackBox.style.display = "none";
+    }
+
+    function showSuccess(data) {
+        if (!successBox || !successText || !fullSentence || !nextBtn) {
+            return;
+        }
+
+        if (data.had_wrong_attempt) {
+            successText.textContent =
+                "Correct now. This item will still count as incorrect because there was a wrong attempt.";
+        } else {
+            successText.textContent = "Correct!";
+        }
+
+        fullSentence.textContent = data.full_sentence || "";
+        nextBtn.textContent = data.next_label || "Next";
+        nextUrl = data.redirect_url || "";
+
+        successBox.style.display = "";
+    }
+
+    function setButtonsPending(isPending) {
+        const buttons = form.querySelectorAll(".words-context-option");
+
+        buttons.forEach(function (button) {
+            if (button.classList.contains("context-option-disabled")) {
+                button.disabled = true;
+                return;
+            }
+
+            button.disabled = isPending;
+        });
+    }
+
+    function disableAllOptions() {
+        const buttons = form.querySelectorAll(".words-context-option");
+
+        buttons.forEach(function (button) {
+            button.disabled = true;
+        });
+    }
+
+    form.addEventListener("click", function (event) {
+        const button = event.target.closest(".words-context-option");
+
+        if (!button || button.disabled) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const answer = button.dataset.answer || "";
+
+        if (!answer) {
+            return;
+        }
+
+        setButtonsPending(true);
+
+        const formData = new FormData();
+        formData.append("answer", answer);
+
+        fetch(window.location.href, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "X-CSRFToken": getCsrfToken(),
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: formData
+        })
+        .then(function (response) {
+            if (!response.ok) {
+                throw new Error("Request failed");
+            }
+
+            return response.json();
+        })
+        .then(function (data) {
+            if (data.is_correct) {
+                hideFeedback();
+                markOptionAsCorrect(button);
+                disableAllOptions();
+                showSuccess(data);
+                return;
+            }
+
+            markOptionAsWrong(button);
+            showFeedback(data.feedback);
+            setButtonsPending(false);
+        })
+        .catch(function (error) {
+            console.warn("Words in context answer failed:", error);
+
+            const fallbackInput = document.createElement("input");
+            fallbackInput.type = "hidden";
+            fallbackInput.name = "answer";
+            fallbackInput.value = answer;
+
+            form.appendChild(fallbackInput);
+            form.submit();
+        });
+    });
+
+    if (nextBtn) {
+        nextBtn.addEventListener("click", function () {
+            if (nextUrl) {
+                window.location.href = nextUrl;
+            }
+        });
+    }
+})();
+</script>
 {% endblock %}

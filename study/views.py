@@ -92,7 +92,10 @@ from .words_context import (
     is_correct_context_answer,
     serialize_card_for_context,
     validate_words_context_payload,
+    choose_random_distractor_cards_for_context,
+    serialize_distractor_options,
 )
+from django.urls import reverse
 
 
 def _get_posted_non_negative_int(request, key, default=0):
@@ -1557,6 +1560,13 @@ def words_in_context_setup_view(request):
 
         selected_cards = choose_random_cards_for_context(request.user, word_count)
 
+        selected_card_ids = [card.id for card in selected_cards]
+
+        distractor_cards = choose_random_distractor_cards_for_context(
+            request.user,
+            excluded_card_ids=selected_card_ids,
+        )
+
         if len(selected_cards) < MIN_WORDS_IN_CONTEXT:
             messages.error(
                 request,
@@ -1574,6 +1584,10 @@ def words_in_context_setup_view(request):
             "selected_cards": [
                 serialize_card_for_context(card)
                 for card in selected_cards
+            ],
+            "distractor_cards": [
+                serialize_card_for_context(card)
+                for card in distractor_cards
             ],
             "selected_level": selected_level,
             "title": "",
@@ -1609,9 +1623,14 @@ def words_in_context_prompt_view(request):
         return redirect("words_in_context_setup")
 
     selected_cards = session_data["selected_cards"]
+    distractor_cards = session_data.get("distractor_cards", [])
     selected_level = session_data.get("selected_level") or DEFAULT_WORDS_CONTEXT_LEVEL
 
-    ai_prompt = build_words_context_prompt(selected_cards, selected_level)
+    ai_prompt = build_words_context_prompt(
+        selected_cards,
+        distractor_cards,
+        selected_level,
+    )
     ai_response = ""
 
     if request.method == "POST":
@@ -1664,23 +1683,42 @@ def words_in_context_practice_view(request):
     current_item = items[current_index]
     options = build_options_for_item(items, current_index)
 
-    feedback = ""
+    session_data["items"] = items
+    request.session[WORDS_CONTEXT_SESSION_KEY] = session_data
+    request.session.modified = True
+
+    attempted_options = current_item.get("attempted_options", [])
+
+    option_rows = [
+        {
+            "text": option,
+            "is_attempted": option in attempted_options,
+        }
+        for option in options
+    ]
+
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
     if request.method == "POST":
         selected_answer = (request.POST.get("answer") or "").strip()
         correct_answer = current_item["correct_option"]
 
-        is_correct = is_correct_context_answer(
+        is_answer_correct = is_correct_context_answer(
             selected_answer,
             correct_answer,
         )
 
-        if is_correct:
+        if is_answer_correct:
+            had_wrong_attempt = bool(current_item.get("attempted_options", []))
+
             result = {
                 "blank_text": current_item["blank_text"],
+                "sentence": current_item.get("sentence", ""),
                 "selected_answer": selected_answer,
                 "correct_answer": correct_answer,
-                "is_correct": True,
+                "is_correct": not had_wrong_attempt,
+                "was_solved": True,
+                "had_wrong_attempt": had_wrong_attempt,
                 "attempts_count": len(current_item.get("attempted_options", [])) + 1,
                 "wrong_attempts": current_item.get("attempted_options", []),
             }
@@ -1692,9 +1730,29 @@ def words_in_context_practice_view(request):
             request.session.modified = True
 
             if session_data["current_index"] >= len(items):
-                return redirect("words_in_context_done")
+                redirect_url = reverse("words_in_context_done")
+                next_label = "Finish"
+            else:
+                redirect_url = reverse("words_in_context_practice")
+                next_label = "Next"
 
-            return redirect("words_in_context_practice")
+            full_sentence = current_item.get("sentence") or current_item["blank_text"].replace(
+                "____",
+                correct_answer,
+            )
+
+            if is_ajax:
+                return JsonResponse({
+                    "is_correct": True,
+                    "redirect_url": redirect_url,
+                    "next_label": next_label,
+                    "full_sentence": full_sentence,
+                    "correct_answer": correct_answer,
+                    "had_wrong_attempt": had_wrong_attempt,
+                    "counted_as_correct": not had_wrong_attempt,
+                })
+
+            return redirect(redirect_url)
 
         attempted_options = current_item.setdefault("attempted_options", [])
 
@@ -1707,7 +1765,37 @@ def words_in_context_practice_view(request):
         request.session[WORDS_CONTEXT_SESSION_KEY] = session_data
         request.session.modified = True
 
-        feedback = "Not quite. Try another option."
+        if is_ajax:
+            return JsonResponse({
+                "is_correct": False,
+                "selected_answer": selected_answer,
+                "attempted_options": attempted_options,
+                "feedback": "Not quite. Try another option.",
+            })
+
+        option_rows = [
+            {
+                "text": option,
+                "is_attempted": option in attempted_options,
+            }
+            for option in options
+        ]
+
+        return render(
+            request,
+            "study/words_in_context_practice.html",
+            {
+                "title": session_data.get("title") or "Words in context",
+                "level": session_data.get("level") or "A2-B1",
+                "current_item": current_item,
+                "options": options,
+                "option_rows": option_rows,
+                "attempted_options": attempted_options,
+                "feedback": "Not quite. Try another option.",
+                "current_number": current_index + 1,
+                "total_count": len(items),
+            },
+        )
 
     return render(
         request,
@@ -1717,8 +1805,9 @@ def words_in_context_practice_view(request):
             "level": session_data.get("level") or "A2-B1",
             "current_item": current_item,
             "options": options,
-            "attempted_options": current_item.get("attempted_options", []),
-            "feedback": feedback,
+            "option_rows": option_rows,
+            "attempted_options": attempted_options,
+            "feedback": "",
             "current_number": current_index + 1,
             "total_count": len(items),
         },
