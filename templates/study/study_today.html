@@ -2,7 +2,7 @@
 {% block title %}Study Today — FlashCards{% endblock %}
 
 {% block content %}
-<div class="card study-today-wrap fade-in">
+<div class="card fade-in-2" style="max-width:480px;margin:20px auto 0;text-align:center;">
     {% if due_count > 0 %}
         <div class="due-count">{{ due_count }}</div>
         <p class="due-label">card{{ due_count|pluralize }} due for review</p>
@@ -27,6 +27,20 @@
     </p>
     <a href="{% url 'words_in_context_setup' %}" class="btn btn-secondary">
         Start words in context
+    </a>
+</div>
+
+<div class="card fade-in-2" style="max-width:480px;margin:20px auto 0;text-align:center;">
+    <div style="font-size:2rem;margin-bottom:12px;">🧪</div>
+
+    <h2 style="margin-bottom:8px;">Translation test</h2>
+
+    <p style="margin-bottom:20px;">
+        Test random words in both directions with multiple-choice answers.
+    </p>
+
+    <a href="{% url 'translation_test_setup' %}" class="btn btn-secondary">
+        Start translation test
     </a>
 </div>
 {% endblock %}

@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}Translation test{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <h1>Translation test</h1>
+    <p class="subtitle">
+        {{ item.direction_label }} · Question {{ current_number }} / {{ total_count }}
+    </p>
+</div>
+
+<div class="review-meta fade-in">
+    <span class="badge badge-muted">{{ item.deck_title }}</span>
+    <span class="badge badge-accent">{{ item.direction_label }}</span>
+</div>
+
+<div class="card fade-in-2" style="margin-bottom:20px;">
+    <div class="face-label">Prompt</div>
+
+    <div class="card-text">
+        {{ item.prompt_text }}
+    </div>
+
+    {% if item.context %}
+        <p class="subtitle" style="margin-top: 10px; margin-bottom: 0;">
+            Context: {{ item.context }}
+        </p>
+    {% endif %}
+</div>
+
+<div
+    id="translation-test-feedback"
+    class="form-error-banner fade-in-2"
+    style="margin-bottom:16px; {% if not feedback %}display:none;{% endif %}"
+>
+    <p id="translation-test-feedback-text">{{ feedback }}</p>
+</div>
+
+<div
+    id="translation-test-success"
+    class="card fade-in-2"
+    style="margin-bottom:16px; display:none; border-color: rgba(34, 197, 94, 0.35);"
+>
+    <div class="face-label">Correct</div>
+
+    <p id="translation-test-success-text" style="margin-bottom:12px;">
+        Correct!
+    </p>
+
+    <div style="padding:14px 16px; background:var(--surface-2); border-radius:14px;">
+        <div class="face-label" style="margin-bottom:6px;">Correct answer</div>
+        <p id="translation-test-correct-answer" style="margin:0;"></p>
+    </div>
+
+    <div class="practice-done-actions" style="margin-top:16px;">
+        <button type="button" id="translation-test-next-btn" class="btn btn-primary">
+            Next
+        </button>
+    </div>
+</div>
+
+<form method="post" id="translation-test-form" class="article-choice-grid translation-test-grid fade-in-3">
+    {% csrf_token %}
+
+    {% for option in option_rows %}
+        <button
+            type="button"
+            data-answer="{{ option.text }}"
+            class="article-choice-btn translation-test-option {% if option.is_attempted %}translation-test-option-disabled{% endif %}"
+            {% if option.is_attempted %}disabled aria-disabled="true"{% endif %}
+            {% if option.is_attempted %}
+                style="opacity:0.35;filter:grayscale(1);cursor:not-allowed;box-shadow:none;transform:none;"
+            {% endif %}
+        >
+            <span class="article-choice-main">{{ option.text }}</span>
+        </button>
+    {% endfor %}
+</form>
+
+<script>
+(function () {
+    const form = document.getElementById("translation-test-form");
+    const feedbackBox = document.getElementById("translation-test-feedback");
+    const feedbackText = document.getElementById("translation-test-feedback-text");
+    const successBox = document.getElementById("translation-test-success");
+    const successText = document.getElementById("translation-test-success-text");
+    const correctAnswerText = document.getElementById("translation-test-correct-answer");
+    const nextBtn = document.getElementById("translation-test-next-btn");
+
+    let nextUrl = "";
+
+    if (!form) {
+        return;
+    }
+
+    function getCsrfToken() {
+        const input = form.querySelector('input[name="csrfmiddlewaretoken"]');
+
+        if (input && input.value) {
+            return input.value;
+        }
+
+        return "";
+    }
+
+    function markOptionAsWrong(button) {
+        button.classList.add("translation-test-option-disabled");
+        button.disabled = true;
+        button.setAttribute("aria-disabled", "true");
+
+        button.style.opacity = "0.35";
+        button.style.filter = "grayscale(1)";
+        button.style.cursor = "not-allowed";
+        button.style.boxShadow = "none";
+        button.style.transform = "none";
+    }
+
+    function markOptionAsCorrect(button) {
+        button.style.borderColor = "rgba(34, 197, 94, 0.55)";
+        button.style.boxShadow = "0 0 0 3px rgba(34, 197, 94, 0.12)";
+    }
+
+    function showFeedback(message) {
+        if (!feedbackBox || !feedbackText) {
+            return;
+        }
+
+        feedbackText.textContent = message || "Not quite. Try another option.";
+        feedbackBox.style.display = "";
+    }
+
+    function hideFeedback() {
+        if (!feedbackBox) {
+            return;
+        }
+
+        feedbackBox.style.display = "none";
+    }
+
+    function showSuccess(data) {
+        if (!successBox || !successText || !correctAnswerText || !nextBtn) {
+            return;
+        }
+
+        if (data.had_wrong_attempt) {
+            successText.textContent =
+                "Correct now. This item will still count as incorrect because there was a wrong attempt.";
+        } else {
+            successText.textContent = "Correct!";
+        }
+
+        correctAnswerText.textContent = data.correct_answer || "";
+        nextBtn.textContent = data.next_label || "Next";
+        nextUrl = data.redirect_url || "";
+
+        successBox.style.display = "";
+    }
+
+    function setButtonsPending(isPending) {
+        const buttons = form.querySelectorAll(".translation-test-option");
+
+        buttons.forEach(function (button) {
+            if (button.classList.contains("translation-test-option-disabled")) {
+                button.disabled = true;
+                return;
+            }
+
+            button.disabled = isPending;
+        });
+    }
+
+    function disableAllOptions() {
+        const buttons = form.querySelectorAll(".translation-test-option");
+
+        buttons.forEach(function (button) {
+            button.disabled = true;
+        });
+    }
+
+    form.addEventListener("click", function (event) {
+        const button = event.target.closest(".translation-test-option");
+
+        if (!button || button.disabled) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const answer = button.dataset.answer || "";
+
+        if (!answer) {
+            return;
+        }
+
+        setButtonsPending(true);
+
+        const formData = new FormData();
+        formData.append("answer", answer);
+
+        fetch(window.location.href, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "X-CSRFToken": getCsrfToken(),
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: formData
+        })
+        .then(function (response) {
+            if (!response.ok) {
+                throw new Error("Request failed");
+            }
+
+            return response.json();
+        })
+        .then(function (data) {
+            if (data.is_correct) {
+                hideFeedback();
+                markOptionAsCorrect(button);
+                disableAllOptions();
+                showSuccess(data);
+                return;
+            }
+
+            markOptionAsWrong(button);
+            showFeedback(data.feedback);
+            setButtonsPending(false);
+        })
+        .catch(function (error) {
+            console.warn("Translation test answer failed:", error);
+
+            const fallbackInput = document.createElement("input");
+            fallbackInput.type = "hidden";
+            fallbackInput.name = "answer";
+            fallbackInput.value = answer;
+
+            form.appendChild(fallbackInput);
+            form.submit();
+        });
+    });
+
+    if (nextBtn) {
+        nextBtn.addEventListener("click", function () {
+            if (nextUrl) {
+                window.location.href = nextUrl;
+            }
+        });
+    }
+})();
+</script>
+{% endblock %}

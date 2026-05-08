@@ -96,6 +96,14 @@ from .words_context import (
     serialize_distractor_options,
 )
 from django.urls import reverse
+from .translation_test import (
+    TRANSLATION_TEST_MAX_WORDS,
+    TRANSLATION_TEST_MIN_WORDS,
+    TRANSLATION_TEST_SESSION_KEY,
+    build_translation_test_items,
+    choose_random_cards_for_test,
+    is_correct_translation_test_answer,
+)
 
 
 def _get_posted_non_negative_int(request, key, default=0):
@@ -1836,6 +1844,236 @@ def words_in_context_done_view(request):
             "level": session_data.get("level") or "A2-B1",
             "summary_text": session_data.get("summary") or "",
             "full_text": session_data.get("full_text") or "",
+            "results": results,
+            "total_count": total_count,
+            "correct_count": correct_count,
+            "wrong_count": wrong_count,
+        },
+    )
+
+@login_required
+def translation_test_setup_view(request):
+    available_cards_count = (
+        Card.objects
+        .filter(deck__owner=request.user)
+        .exclude(question__exact="")
+        .exclude(answer__exact="")
+        .count()
+    )
+
+    if request.method == "POST":
+        raw_count = request.POST.get("word_count", TRANSLATION_TEST_MIN_WORDS)
+
+        try:
+            word_count = int(raw_count)
+        except (TypeError, ValueError):
+            word_count = TRANSLATION_TEST_MIN_WORDS
+
+        word_count = max(
+            TRANSLATION_TEST_MIN_WORDS,
+            min(word_count, TRANSLATION_TEST_MAX_WORDS),
+        )
+
+        selected_cards = choose_random_cards_for_test(request.user, word_count)
+
+        if len(selected_cards) < TRANSLATION_TEST_MIN_WORDS:
+            messages.error(
+                request,
+                "You need at least 4 cards to start the test.",
+            )
+            return redirect("translation_test_setup")
+
+        if len(selected_cards) < word_count:
+            messages.warning(
+                request,
+                f"Only {len(selected_cards)} suitable cards were found.",
+            )
+
+        try:
+            items = build_translation_test_items(
+                user=request.user,
+                selected_cards=selected_cards,
+            )
+        except ValueError as exc:
+            messages.error(request, str(exc))
+            return redirect("translation_test_setup")
+
+        request.session[TRANSLATION_TEST_SESSION_KEY] = {
+            "items": items,
+            "current_index": 0,
+            "results": [],
+        }
+        request.session.modified = True
+
+        return redirect("translation_test_practice")
+
+    return render(
+        request,
+        "study/translation_test_setup.html",
+        {
+            "available_cards_count": available_cards_count,
+            "min_words": TRANSLATION_TEST_MIN_WORDS,
+            "max_words": TRANSLATION_TEST_MAX_WORDS,
+            "default_words": min(
+                10,
+                max(TRANSLATION_TEST_MIN_WORDS, available_cards_count),
+            ),
+        },
+    )
+
+
+@login_required
+def translation_test_practice_view(request):
+    session_data = request.session.get(TRANSLATION_TEST_SESSION_KEY)
+
+    if not session_data or not session_data.get("items"):
+        return redirect("translation_test_setup")
+
+    items = session_data["items"]
+    current_index = session_data.get("current_index", 0)
+
+    if current_index >= len(items):
+        return redirect("translation_test_done")
+
+    current_item = items[current_index]
+
+    attempted_options = current_item.get("attempted_options", [])
+
+    option_rows = [
+        {
+            "text": option,
+            "is_attempted": option in attempted_options,
+        }
+        for option in current_item["options"]
+    ]
+
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+    if request.method == "POST":
+        selected_answer = (request.POST.get("answer") or "").strip()
+        correct_answer = current_item["correct_option"]
+
+        is_answer_correct = is_correct_translation_test_answer(
+            selected_answer,
+            correct_answer,
+        )
+
+        if is_answer_correct:
+            had_wrong_attempt = bool(current_item.get("attempted_options", []))
+
+            result = {
+                "prompt_text": current_item["prompt_text"],
+                "correct_option": correct_answer,
+                "selected_answer": selected_answer,
+                "direction_label": current_item["direction_label"],
+                "deck_title": current_item["deck_title"],
+                "context": current_item.get("context", ""),
+                # Important:
+                # If the user made at least one wrong attempt,
+                # the item is counted as incorrect even after the correct answer.
+                "is_correct": not had_wrong_attempt,
+                "was_solved": True,
+                "had_wrong_attempt": had_wrong_attempt,
+                "attempts_count": len(current_item.get("attempted_options", [])) + 1,
+                "wrong_attempts": current_item.get("attempted_options", []),
+            }
+
+            session_data.setdefault("results", []).append(result)
+            session_data["current_index"] = current_index + 1
+
+            request.session[TRANSLATION_TEST_SESSION_KEY] = session_data
+            request.session.modified = True
+
+            if session_data["current_index"] >= len(items):
+                redirect_url = reverse("translation_test_done")
+                next_label = "Finish"
+            else:
+                redirect_url = reverse("translation_test_practice")
+                next_label = "Next"
+
+            if is_ajax:
+                return JsonResponse({
+                    "is_correct": True,
+                    "redirect_url": redirect_url,
+                    "next_label": next_label,
+                    "correct_answer": correct_answer,
+                    "had_wrong_attempt": had_wrong_attempt,
+                    "counted_as_correct": not had_wrong_attempt,
+                })
+
+            return redirect(redirect_url)
+
+        attempted_options = current_item.setdefault("attempted_options", [])
+
+        if selected_answer and selected_answer not in attempted_options:
+            attempted_options.append(selected_answer)
+
+        items[current_index] = current_item
+        session_data["items"] = items
+
+        request.session[TRANSLATION_TEST_SESSION_KEY] = session_data
+        request.session.modified = True
+
+        if is_ajax:
+            return JsonResponse({
+                "is_correct": False,
+                "selected_answer": selected_answer,
+                "attempted_options": attempted_options,
+                "feedback": "Not quite. Try another option.",
+            })
+
+        option_rows = [
+            {
+                "text": option,
+                "is_attempted": option in attempted_options,
+            }
+            for option in current_item["options"]
+        ]
+
+        return render(
+            request,
+            "study/translation_test_practice.html",
+            {
+                "item": current_item,
+                "option_rows": option_rows,
+                "feedback": "Not quite. Try another option.",
+                "current_number": current_index + 1,
+                "total_count": len(items),
+            },
+        )
+
+    return render(
+        request,
+        "study/translation_test_practice.html",
+        {
+            "item": current_item,
+            "option_rows": option_rows,
+            "feedback": "",
+            "current_number": current_index + 1,
+            "total_count": len(items),
+        },
+    )
+
+
+@login_required
+def translation_test_done_view(request):
+    session_data = request.session.get(TRANSLATION_TEST_SESSION_KEY)
+
+    if not session_data:
+        return redirect("translation_test_setup")
+
+    results = session_data.get("results", [])
+    total_count = len(results)
+    correct_count = sum(1 for item in results if item.get("is_correct"))
+    wrong_count = total_count - correct_count
+
+    request.session.pop(TRANSLATION_TEST_SESSION_KEY, None)
+    request.session.modified = True
+
+    return render(
+        request,
+        "study/translation_test_done.html",
+        {
             "results": results,
             "total_count": total_count,
             "correct_count": correct_count,

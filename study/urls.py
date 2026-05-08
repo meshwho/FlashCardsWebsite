@@ -29,6 +29,9 @@ from .views import (
     words_in_context_prompt_view,
     words_in_context_practice_view,
     words_in_context_done_view,
+    translation_test_setup_view,
+    translation_test_practice_view,
+    translation_test_done_view,
 )
 
 urlpatterns = [
@@ -80,5 +83,20 @@ urlpatterns = [
         "study/words-in-context/done/",
         words_in_context_done_view,
         name="words_in_context_done",
+    ),
+    path(
+        "study/test/",
+        translation_test_setup_view,
+        name="translation_test_setup",
+    ),
+    path(
+        "study/test/practice/",
+        translation_test_practice_view,
+        name="translation_test_practice",
+    ),
+    path(
+        "study/test/done/",
+        translation_test_done_view,
+        name="translation_test_done",
     ),
 ]

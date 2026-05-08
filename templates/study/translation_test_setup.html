@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Translation test — FlashCards{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <h1>Translation test</h1>
+    <p class="subtitle">
+        Choose how many words you want to test. Translation direction will be random.
+    </p>
+</div>
+
+{% if messages %}
+    <div class="fade-in-2" style="margin-bottom: 20px;">
+        {% for message in messages %}
+            <div class="form-error-banner">
+                <p>{{ message }}</p>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<div class="card fade-in-2">
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label for="id_word_count">Number of words</label>
+            <input
+                type="number"
+                id="id_word_count"
+                name="word_count"
+                min="{{ min_words }}"
+                max="{{ max_words }}"
+                value="{{ default_words }}"
+            >
+
+            <p class="subtitle" style="margin-top:8px;">
+                Available cards: {{ available_cards_count }}.
+                Minimum: {{ min_words }}. Maximum: {{ max_words }}.
+            </p>
+        </div>
+
+        <div class="practice-done-actions">
+            <button type="submit" class="btn btn-primary">
+                Start test
+            </button>
+
+            <a href="{% url 'study_today' %}" class="btn btn-ghost">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
