@@ -114,49 +114,6 @@
     </section>
 </div>
 
-<div class="profile-grid" style="margin-top: 24px;">
-    <section class="card fade-in-3">
-        <div class="page-header" style="margin-bottom: 18px;">
-            <h2>Top decks</h2>
-            <p class="subtitle">Your biggest decks.</p>
-        </div>
-
-        {% if top_decks %}
-            <div class="table-wrap table-mobile-cards">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Deck</th>
-                            <th>Cards</th>
-                            <th>Memory</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for deck in top_decks %}
-                            <tr>
-                                <td data-label="Deck">{{ deck.title }}</td>
-                                <td data-label="Cards">{{ deck.card_count }}</td>
-                                <td data-label="Memory">
-                                    <span class="badge {{ deck.memory_badge_class }}">{{ deck.memory_score }}/10</span>
-                                </td>
-                                <td data-label="Action">
-                                    <a href="{% url 'deck_detail' deck.id %}" class="btn btn-secondary btn-sm">Open deck</a>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <div class="empty-state">
-                <span class="empty-icon">◌</span>
-                <p>No decks yet.</p>
-                <a href="{% url 'deck_create' %}" class="btn btn-primary">Create deck</a>
-            </div>
-        {% endif %}
-    </section>
-</div>
 <div class="card fade-in-3" style="margin-top: 24px;">
     <div class="page-header" style="margin-bottom: 18px;">
         <h2>How to read your stats</h2>
