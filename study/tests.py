@@ -5,8 +5,9 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
-
+from .active_fsrs_service import ActiveFSRSService
 from .models import (
+    ActiveUseAttempt,
     Card,
     CardActiveState,
     Deck,
@@ -574,3 +575,147 @@ class ActiveUseLayerModelTests(TestCase):
             CardActiveState.STAGE_PASSIVE,
         )
         self.assertFalse(card.active_state.is_active_pipeline)
+
+class ActiveFSRSServiceTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            username="active_fsrs_user",
+            email="active_fsrs_user@example.com",
+            password="test-password-123",
+        )
+        self.deck = Deck.objects.create(
+            owner=self.user,
+            title="Active FSRS test deck",
+        )
+        self.card = Card.objects.create(
+            deck=self.deck,
+            question="die Entscheidung",
+            answer="решение",
+            has_article=True,
+        )
+
+    def test_active_review_updates_only_active_state(self):
+        original_due = self.card.due
+        original_fsrs_state = self.card.fsrs_state
+        original_stability = self.card.stability
+        original_difficulty = self.card.difficulty
+        original_state = self.card.state
+        original_last_review = self.card.last_review
+
+        service = ActiveFSRSService()
+
+        outcome = service.review_active_card(
+            card=self.card,
+            user=self.user,
+            rating_value=3,
+            stage=CardActiveState.STAGE_RECALL,
+            task_type="recall",
+            generated_prompt="Test prompt",
+            user_answer="die Entscheidung",
+            chatgpt_response="Rating: Good\nActive use: yes",
+            active_use=True,
+            source=ActiveUseAttempt.SOURCE_PASTED_CHATGPT_RESPONSE,
+        )
+
+        self.card.refresh_from_db()
+        self.card.active_state.refresh_from_db()
+
+        self.assertEqual(self.card.due, original_due)
+        self.assertEqual(self.card.fsrs_state, original_fsrs_state)
+        self.assertEqual(self.card.stability, original_stability)
+        self.assertEqual(self.card.difficulty, original_difficulty)
+        self.assertEqual(self.card.state, original_state)
+        self.assertEqual(self.card.last_review, original_last_review)
+
+        self.assertIsNotNone(self.card.active_state.active_due)
+        self.assertTrue(self.card.active_state.active_fsrs_state)
+        self.assertGreaterEqual(self.card.active_state.total_active_attempts, 1)
+        self.assertEqual(self.card.active_state.successful_active_attempts, 1)
+        self.assertEqual(self.card.active_state.failed_active_attempts, 0)
+        self.assertEqual(self.card.active_state.consecutive_active_failures, 0)
+
+        self.assertEqual(outcome.active_attempt.rating, 3)
+        self.assertTrue(outcome.active_attempt.active_use)
+        self.assertTrue(outcome.active_attempt.is_success)
+
+    def test_active_review_again_counts_as_failure(self):
+        service = ActiveFSRSService()
+
+        outcome = service.review_active_card(
+            card=self.card,
+            user=self.user,
+            rating_value=1,
+            stage=CardActiveState.STAGE_RECALL,
+            task_type="recall",
+            generated_prompt="Test prompt",
+            user_answer="",
+            chatgpt_response="Rating: Again\nActive use: no",
+            active_use=False,
+            error_summary="Could not recall the word.",
+            source=ActiveUseAttempt.SOURCE_PASTED_CHATGPT_RESPONSE,
+        )
+
+        self.card.active_state.refresh_from_db()
+
+        self.assertEqual(self.card.active_state.total_active_attempts, 1)
+        self.assertEqual(self.card.active_state.successful_active_attempts, 0)
+        self.assertEqual(self.card.active_state.failed_active_attempts, 1)
+        self.assertEqual(self.card.active_state.consecutive_active_failures, 1)
+        self.assertEqual(
+            self.card.active_state.last_error_summary,
+            "Could not recall the word.",
+        )
+
+        self.assertEqual(outcome.active_attempt.rating, 1)
+        self.assertFalse(outcome.active_attempt.active_use)
+        self.assertFalse(outcome.active_attempt.is_success)
+
+    def test_invalid_active_rating_raises_error(self):
+        service = ActiveFSRSService()
+
+        with self.assertRaises(ValueError):
+            service.review_active_card(
+                card=self.card,
+                user=self.user,
+                rating_value=99,
+            )
+
+    def test_hard_rating_does_not_count_as_success(self):
+        service = ActiveFSRSService()
+
+        outcome = service.review_active_card(
+            card=self.card,
+            user=self.user,
+            rating_value=2,
+            stage=CardActiveState.STAGE_SENTENCE,
+            task_type="sentence",
+            active_use=True,
+        )
+
+        self.card.active_state.refresh_from_db()
+
+        self.assertEqual(self.card.active_state.total_active_attempts, 1)
+        self.assertEqual(self.card.active_state.successful_active_attempts, 0)
+        self.assertEqual(self.card.active_state.failed_active_attempts, 1)
+        self.assertEqual(self.card.active_state.consecutive_active_failures, 1)
+        self.assertFalse(outcome.active_attempt.is_success)
+
+    def test_good_without_active_use_does_not_count_as_success(self):
+        service = ActiveFSRSService()
+
+        outcome = service.review_active_card(
+            card=self.card,
+            user=self.user,
+            rating_value=3,
+            stage=CardActiveState.STAGE_SENTENCE,
+            task_type="sentence",
+            active_use=False,
+        )
+
+        self.card.active_state.refresh_from_db()
+
+        self.assertEqual(self.card.active_state.total_active_attempts, 1)
+        self.assertEqual(self.card.active_state.successful_active_attempts, 0)
+        self.assertEqual(self.card.active_state.failed_active_attempts, 1)
+        self.assertFalse(outcome.active_attempt.is_success)
