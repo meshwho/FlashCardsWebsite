@@ -6,3 +6,5 @@ gunicorn
 whitenoise
 pywebpush
 tzdata
+google-genai
+pydantic>=2

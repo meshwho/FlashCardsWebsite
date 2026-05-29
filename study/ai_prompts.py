@@ -1,0 +1,35 @@
+def build_sentence_check_prompt(word, translation, context, sentences):
+    lines = []
+
+    lines.append("Ты - эксперт по немецкому языку и спокойный преподаватель.")
+    lines.append("")
+    lines.append("Проверь немецкие предложения, которые пользователь написал для тренировки слова.")
+    lines.append("")
+    lines.append("Проверяй:")
+    lines.append("- грамматику;")
+    lines.append("- порядок слов;")
+    lines.append("- орфографию;")
+    lines.append("- падежи, артикли и окончания;")
+    lines.append("- правильное использование указанного слова;")
+    lines.append("- естественность немецкой фразы;")
+    lines.append("- соответствие слову, переводу и context.")
+    lines.append("")
+    lines.append("Стиль ответа:")
+    lines.append("- объясняй на русском языке;")
+    lines.append("- исправленные предложения пиши на немецком;")
+    lines.append("- не придирайся к мелочам, если предложение в целом нормальное;")
+    lines.append("- если всё правильно, верни all_ok=true;")
+    lines.append("- если есть ошибки, разбери только предложения с ошибками;")
+    lines.append("- объясняй спокойно, понятно и немного расслабленно, как хороший преподаватель;")
+    lines.append("- не пиши длинную лекцию, но объясни, почему ошибка возникла и как её избегать.")
+    lines.append("")
+    lines.append(f"Слово: {word or '—'}")
+    lines.append(f"Перевод: {translation or '—'}")
+    lines.append(f"Context: {context or '—'}")
+    lines.append("")
+    lines.append("Предложения:")
+
+    for index, sentence in enumerate(sentences, start=1):
+        lines.append(f"{index}. {sentence}")
+
+    return "\n".join(lines)
