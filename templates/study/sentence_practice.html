@@ -280,57 +280,84 @@
             .replaceAll("'", "&#039;");
     }
 
-    function renderList(items) {
-        if (!items || !items.length) {
-            return "";
-        }
-
-        return "<ul>" + items.map(function (item) {
-            return "<li>" + escapeHtml(item) + "</li>";
-        }).join("") + "</ul>";
+    function renderList(items, className) {
+    if (!items || !items.length) {
+        return "";
     }
 
+    const listClass = className || "";
+
+    return "<ul class=\"" + listClass + "\">" + items.map(function (item) {
+        return "<li>" + escapeHtml(item) + "</li>";
+    }).join("") + "</ul>";
+}
     function renderResult(result) {
-        resultBox.style.display = "";
+    resultBox.style.display = "";
+    resultBox.className = "card ai-check-panel";
 
-        if (result.all_ok) {
-            resultBox.innerHTML = `
-                <div class="face-label">AI check</div>
-                <p style="margin-bottom:0;">
-                    ${escapeHtml(result.short_message || "Все ок. Хорошая работа!")}
-                </p>
-            `;
-            return;
-        }
-
-        const problemsHtml = (result.problems || []).map(function (problem) {
-            return `
-                <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border);">
-                    <div class="face-label">Sentence ${problem.sentence_number}</div>
-
-                    <p style="margin-bottom:10px;">
-                        <strong>Corrected version:</strong><br>
-                        ${escapeHtml(problem.corrected_sentence)}
-                    </p>
-
-                    <p style="margin-bottom:6px;"><strong>What was wrong:</strong></p>
-                    ${renderList(problem.what_was_wrong)}
-
-                    <p style="margin-bottom:6px;"><strong>Why:</strong></p>
-                    ${renderList(problem.why_it_is_wrong)}
-
-                    <p style="margin-bottom:6px;"><strong>How to avoid this:</strong></p>
-                    ${renderList(problem.how_to_avoid)}
-                </div>
-            `;
-        }).join("");
-
+    if (result.all_ok) {
         resultBox.innerHTML = `
             <div class="face-label">AI check</div>
-            <p>${escapeHtml(result.short_message || "Есть несколько моментов, которые стоит поправить.")}</p>
-            ${problemsHtml}
+
+            <p class="ai-check-ok-text">
+                ${escapeHtml(result.short_message || "Все ок. Хорошая работа!")}
+            </p>
         `;
+        return;
     }
+
+    const problemsHtml = (result.problems || []).map(function (problem) {
+        return `
+            <div class="ai-check-problem">
+                <h3 class="ai-check-problem-title">
+                    Sentence ${problem.sentence_number}
+                </h3>
+
+                <p class="ai-check-original">
+                    ${escapeHtml(problem.original_sentence || "")}
+                </p>
+
+                <div class="ai-check-corrected">
+                    <span class="ai-check-corrected-label">
+                        Corrected version
+                    </span>
+                    <p class="ai-check-corrected-text">
+                        ${escapeHtml(problem.corrected_sentence || "")}
+                    </p>
+                </div>
+
+                <div class="ai-check-sections">
+                    <div class="ai-check-section">
+                        <h4 class="ai-check-section-title">What was wrong</h4>
+                        ${renderList(problem.what_was_wrong, "ai-check-list")}
+                    </div>
+
+                    <div class="ai-check-section">
+                        <h4 class="ai-check-section-title">Why</h4>
+                        ${renderList(problem.why_it_is_wrong, "ai-check-list")}
+                    </div>
+
+                    <div class="ai-check-section">
+                        <h4 class="ai-check-section-title">How to avoid this</h4>
+                        ${renderList(problem.how_to_avoid, "ai-check-list")}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join("");
+
+    resultBox.innerHTML = `
+        <div class="face-label">AI check</div>
+
+        <div class="ai-check-summary">
+            <p class="ai-check-summary-text">
+                ${escapeHtml(result.short_message || "Есть несколько моментов, которые стоит поправить.")}
+            </p>
+        </div>
+
+        ${problemsHtml}
+    `;
+}
 
     function renderError(message) {
         resultBox.style.display = "";

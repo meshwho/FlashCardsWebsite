@@ -1758,3 +1758,127 @@ body::-webkit-scrollbar {
     transform: none;
     box-shadow: none;
 }
+
+.ai-check-panel {
+    padding: 24px;
+}
+
+.ai-check-summary {
+    margin: 0 0 22px 0;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+}
+
+.ai-check-summary-text {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.65;
+    color: var(--text);
+}
+
+.ai-check-problem {
+    margin-top: 20px;
+}
+
+.ai-check-problem:first-of-type {
+    margin-top: 0;
+}
+
+.ai-check-problem-title {
+    margin: 0 0 14px 0;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.ai-check-original {
+    margin: 0 0 14px 0;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.ai-check-corrected {
+    margin: 0 0 18px 0;
+    padding-left: 14px;
+    border-left: 3px solid rgba(63, 138, 109, 0.35);
+}
+
+.ai-check-corrected-label,
+.ai-check-section-title {
+    display: block;
+    margin: 0 0 6px 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.ai-check-corrected-text {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--text);
+}
+
+.ai-check-sections {
+    display: grid;
+    gap: 14px;
+}
+
+.ai-check-section {
+    padding: 0;
+    border: none;
+    background: transparent;
+}
+
+.ai-check-list {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.ai-check-list li {
+    margin-bottom: 6px;
+    line-height: 1.6;
+    color: var(--text);
+}
+
+.ai-check-list li:last-child {
+    margin-bottom: 0;
+}
+
+.ai-check-ok-text {
+    margin: 0;
+    line-height: 1.6;
+    color: var(--text);
+}
+
+@media (max-width: 640px) {
+    .ai-check-panel {
+        padding: 18px;
+    }
+
+    .ai-check-summary {
+        margin-bottom: 18px;
+        padding-bottom: 16px;
+    }
+
+    .ai-check-summary-text {
+        font-size: 0.98rem;
+    }
+
+    .ai-check-problem-title {
+        margin-bottom: 12px;
+    }
+
+    .ai-check-corrected {
+        margin-bottom: 16px;
+        padding-left: 12px;
+    }
+
+    .ai-check-list {
+        padding-left: 18px;
+    }
+}
