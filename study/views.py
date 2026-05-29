@@ -104,6 +104,8 @@ from .translation_test import (
     choose_random_cards_for_test,
     is_correct_translation_test_answer,
 )
+from .ai_prompts import build_sentence_check_prompt
+from .ai_services import AIServiceError, check_sentences_with_gemini
 
 
 def _get_posted_non_negative_int(request, key, default=0):
@@ -2079,4 +2081,82 @@ def translation_test_done_view(request):
             "correct_count": correct_count,
             "wrong_count": wrong_count,
         },
+    )
+
+
+@login_required
+@require_POST
+def ai_check_sentences_view(request):
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "Invalid JSON request.",
+            },
+            status=400,
+        )
+
+    card_id = payload.get("card_id")
+    raw_sentences = payload.get("sentences", [])
+
+    if not card_id:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "card_id is required.",
+            },
+            status=400,
+        )
+
+    if not isinstance(raw_sentences, list):
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "sentences must be a list.",
+            },
+            status=400,
+        )
+
+    sentences = [
+        str(sentence).strip()
+        for sentence in raw_sentences
+        if str(sentence).strip()
+    ]
+
+    if not sentences:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "Write at least one sentence first.",
+            },
+            status=400,
+        )
+
+    card = get_user_card_or_404(request.user, card_id)
+
+    prompt = build_sentence_check_prompt(
+        word=card.question,
+        translation=card.answer,
+        context=card.context,
+        sentences=sentences,
+    )
+
+    try:
+        result = check_sentences_with_gemini(prompt)
+    except AIServiceError as exc:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": str(exc),
+            },
+            status=502,
+        )
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "result": result.model_dump(),
+        }
     )

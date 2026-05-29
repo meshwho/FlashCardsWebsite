@@ -58,8 +58,22 @@
             >
                 Copy AI sentence check prompt
             </button>
-        </div>
 
+            <button
+                type="button"
+                id="ai-check-sentences-btn"
+                class="btn btn-secondary"
+                data-card-id="{{ card.id }}"
+                data-check-url="{% url 'ai_check_sentences' %}"
+            >
+                Check with AI
+            </button>
+        </div>
+        <div
+            id="ai-sentence-check-result"
+            class="card"
+            style="margin-top:20px; display:none;"
+        ></div>
         <p id="copy-sentence-check-prompt-status" class="subtitle" style="margin-top:10px;"></p>
     </form>
 </div>
@@ -225,6 +239,160 @@
                         "Could not copy automatically. Please try again.";
                 }
             });
+    });
+})();
+(function () {
+    const button = document.getElementById("ai-check-sentences-btn");
+    const resultBox = document.getElementById("ai-sentence-check-result");
+
+    if (!button || !resultBox) {
+        return;
+    }
+
+    function getCsrfToken() {
+        const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+
+        if (input && input.value) {
+            return input.value;
+        }
+
+        return "";
+    }
+
+    function getSentences() {
+        const fields = Array.from(
+            document.querySelectorAll('[name^="sentence_"]')
+        );
+
+        return fields
+            .map(function (field) {
+                return (field.value || "").trim();
+            })
+            .filter(Boolean);
+    }
+
+    function escapeHtml(value) {
+        return String(value || "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
+
+    function renderList(items) {
+        if (!items || !items.length) {
+            return "";
+        }
+
+        return "<ul>" + items.map(function (item) {
+            return "<li>" + escapeHtml(item) + "</li>";
+        }).join("") + "</ul>";
+    }
+
+    function renderResult(result) {
+        resultBox.style.display = "";
+
+        if (result.all_ok) {
+            resultBox.innerHTML = `
+                <div class="face-label">AI check</div>
+                <p style="margin-bottom:0;">
+                    ${escapeHtml(result.short_message || "Все ок. Хорошая работа!")}
+                </p>
+            `;
+            return;
+        }
+
+        const problemsHtml = (result.problems || []).map(function (problem) {
+            return `
+                <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border);">
+                    <div class="face-label">Sentence ${problem.sentence_number}</div>
+
+                    <p style="margin-bottom:10px;">
+                        <strong>Corrected version:</strong><br>
+                        ${escapeHtml(problem.corrected_sentence)}
+                    </p>
+
+                    <p style="margin-bottom:6px;"><strong>What was wrong:</strong></p>
+                    ${renderList(problem.what_was_wrong)}
+
+                    <p style="margin-bottom:6px;"><strong>Why:</strong></p>
+                    ${renderList(problem.why_it_is_wrong)}
+
+                    <p style="margin-bottom:6px;"><strong>How to avoid this:</strong></p>
+                    ${renderList(problem.how_to_avoid)}
+                </div>
+            `;
+        }).join("");
+
+        resultBox.innerHTML = `
+            <div class="face-label">AI check</div>
+            <p>${escapeHtml(result.short_message || "Есть несколько моментов, которые стоит поправить.")}</p>
+            ${problemsHtml}
+        `;
+    }
+
+    function renderError(message) {
+        resultBox.style.display = "";
+        resultBox.innerHTML = `
+            <div class="form-error-banner" style="margin-bottom:0;">
+                <p>${escapeHtml(message || "AI check failed.")}</p>
+            </div>
+        `;
+    }
+
+    button.addEventListener("click", function () {
+        const sentences = getSentences();
+
+        if (!sentences.length) {
+            renderError("Write at least one sentence first.");
+            return;
+        }
+
+        button.disabled = true;
+        button.textContent = "Checking...";
+
+        resultBox.style.display = "";
+        resultBox.innerHTML = `
+            <div class="face-label">AI check</div>
+            <p style="margin-bottom:0;">Checking your sentences...</p>
+        `;
+
+        fetch(button.dataset.checkUrl, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCsrfToken()
+            },
+            body: JSON.stringify({
+                card_id: button.dataset.cardId,
+                sentences: sentences
+            })
+        })
+        .then(function (response) {
+            return response.json().then(function (data) {
+                if (!response.ok) {
+                    throw new Error(data.error || "AI check failed.");
+                }
+
+                return data;
+            });
+        })
+        .then(function (data) {
+            if (!data.ok) {
+                throw new Error(data.error || "AI check failed.");
+            }
+
+            renderResult(data.result);
+        })
+        .catch(function (error) {
+            renderError(error.message || "AI check failed.");
+        })
+        .finally(function () {
+            button.disabled = false;
+            button.textContent = "Check with AI";
+        });
     });
 })();
 </script>
