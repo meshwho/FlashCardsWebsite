@@ -40,6 +40,9 @@ CSRF_TRUSTED_ORIGINS = [
     if origin.strip()
 ]
 
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+AI_FEATURES_ENABLED = os.getenv("AI_FEATURES_ENABLED", "False") == "True"
 
 # Application definition
 
