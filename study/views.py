@@ -47,6 +47,10 @@ from .review_logic import (
 from .review_session import (
     add_review_to_session,
     clear_review_session,
+    complete_current_review_retry,
+    enqueue_review_retry,
+    get_current_review_retry,
+    get_review_retry_count,
     get_review_session_summary,
     start_review_session,
 )
@@ -396,18 +400,67 @@ def start_review_session_view(request):
 
 @login_required
 def review_card_view(request):
-    card = get_next_due_card_for_user(request.user)
+    is_retry = False
+    retry_item = None
 
-    if card is None:
-        return redirect("review_done")
+    if request.method == "POST":
+        posted_card_id = request.POST.get("card_id")
+        is_retry = request.POST.get("is_retry") == "1"
 
-    remaining_count = get_due_cards_for_user(request.user).count()
+        if not posted_card_id:
+            return redirect("review_card")
+
+        if is_retry:
+            retry_item = get_current_review_retry(request)
+
+            if (
+                not retry_item
+                or retry_item.get("card_id") != posted_card_id
+            ):
+                return redirect("review_card")
+        else:
+            current_due_card = get_next_due_card_for_user(request.user)
+
+            if (
+                current_due_card is None
+                or str(current_due_card.id) != posted_card_id
+            ):
+                return redirect("review_card")
+
+        card = get_user_card_or_404(
+            request.user,
+            posted_card_id,
+        )
+
+    else:
+        card = get_next_due_card_for_user(request.user)
+
+        # Только когда обычные due-карточки закончились,
+        # начинаем контрольные повторы.
+        if card is None:
+            retry_item = get_current_review_retry(request)
+
+            if retry_item is None:
+                return redirect("review_done")
+
+            card = get_user_card_or_404(
+                request.user,
+                retry_item["card_id"],
+            )
+            is_retry = True
+
+    remaining_count = (
+        get_due_cards_for_user(request.user).count()
+        + get_review_retry_count(request)
+    )
 
     # Direction is random only when a new card is opened.
     # During POST actions such as Hint, Check, or Don't know,
     # we must preserve the same direction from the hidden input.
     if request.method == "POST":
         direction = request.POST.get("direction") or "forward"
+    elif is_retry and retry_item:
+        direction = retry_item.get("direction", "forward")
     else:
         direction = random.choice(["forward", "reverse"])
 
@@ -447,27 +500,144 @@ def review_card_view(request):
             0,
         )
 
-        if action == "hint":
-            hints_used = min(hints_used + 1, REVIEW_MAX_HINTS)
-            hint_text = build_hint_mask(
-                expected_answer,
-                hints_used,
-                has_article=use_article_logic,
-            )
+        if is_retry:
+            if action == "hint":
+                hints_used = min(
+                    hints_used + 1,
+                    REVIEW_MAX_HINTS,
+                )
 
-        elif action == "check":
-            if is_correct_answer(user_answer, expected_answer):
+                hint_text = build_hint_mask(
+                    expected_answer,
+                    hints_used,
+                    has_article=use_article_logic,
+                )
+
+            elif action == "check":
+                if is_correct_answer(
+                    user_answer,
+                    expected_answer,
+                ):
+                    complete_current_review_retry(request)
+                    return redirect("review_card")
+
+                wrong_attempts_count += 1
+                feedback = "Not quite right. Try again or use a hint."
+                feedback_type = "error"
+
+                hint_text = build_hint_mask(
+                    expected_answer,
+                    hints_used,
+                    has_article=use_article_logic,
+                )
+
+            elif action == "dont_know":
+                complete_current_review_retry(request)
+                return redirect("review_card")
+        else:
+            if action == "hint":
+                hints_used = min(hints_used + 1, REVIEW_MAX_HINTS)
+                hint_text = build_hint_mask(
+                    expected_answer,
+                    hints_used,
+                    has_article=use_article_logic,
+                )
+
+            elif action == "check":
+                if is_correct_answer(user_answer, expected_answer):
+                    rating_value = get_rating_from_result(
+                        hints_used,
+                        knows_answer=True,
+                    )
+
+                    service = FSRSService()
+                    outcome = service.review_card(card, rating_value)
+
+                    if rating_value == 1:
+                        enqueue_review_retry(
+                            request,
+                            outcome.card,
+                            direction=direction,
+                        )
+
+                    if should_require_sentences(
+                        had_wrong_attempt=bool(wrong_attempts_count > 0),
+                        had_hint=bool(hints_used > 0),
+                        rating_value=rating_value,
+                        feature_enabled=True,
+                    ):
+                        required_count = sentence_count_for_rating(rating_value)
+
+                        add_review_to_session(
+                            request,
+                            outcome.card,
+                            rating_value,
+                            user_answer=user_answer,
+                            hints_used=hints_used,
+                            direction=direction,
+                            prompt_text=prompt_text,
+                            expected_answer=expected_answer,
+                        )
+
+                        set_pending_sentence_task(
+                            request,
+                            card_id=outcome.card.id,
+                            source_mode="fsrs",
+                            rating_value=rating_value,
+                            required_count=required_count,
+                            return_url_name="review_card",
+                            return_url_kwargs={},
+                        )
+
+                        return redirect("sentence_practice")
+
+                    add_review_to_session(
+                        request,
+                        outcome.card,
+                        rating_value,
+                        user_answer=user_answer,
+                        hints_used=hints_used,
+                        direction=direction,
+                        prompt_text=prompt_text,
+                        expected_answer=expected_answer,
+                    )
+
+                    next_card = get_next_due_card_for_user(request.user)
+
+                    if next_card is None:
+                        return redirect("review_done")
+
+                    return redirect("review_card")
+
+                wrong_attempts_count += 1
+                feedback = "Not quite right. Try again or use a hint."
+                feedback_type = "error"
+                hint_text = build_hint_mask(
+                    expected_answer,
+                    hints_used,
+                    has_article=use_article_logic,
+                )
+
+            elif action == "dont_know":
                 rating_value = get_rating_from_result(
                     hints_used,
-                    knows_answer=True,
+                    knows_answer=False,
                 )
 
                 service = FSRSService()
                 outcome = service.review_card(card, rating_value)
 
+                if rating_value == 1:
+                    enqueue_review_retry(
+                        request,
+                        outcome.card,
+                        direction=direction,
+                    )
+
                 if should_require_sentences(
                     had_wrong_attempt=bool(wrong_attempts_count > 0),
                     had_hint=bool(hints_used > 0),
+                    had_dont_know=True,
                     rating_value=rating_value,
                     feature_enabled=True,
                 ):
@@ -507,84 +677,11 @@ def review_card_view(request):
                     expected_answer=expected_answer,
                 )
 
-                next_card = get_next_due_card_for_user(request.user)
-
-                if next_card is None:
-                    return redirect("review_done")
+                answer_revealed = True
+                feedback = f"Correct answer: {expected_answer}"
+                feedback_type = "info"
 
                 return redirect("review_card")
-
-            wrong_attempts_count += 1
-            feedback = "Not quite right. Try again or use a hint."
-            feedback_type = "error"
-            hint_text = build_hint_mask(
-                expected_answer,
-                hints_used,
-                has_article=use_article_logic,
-            )
-
-        elif action == "dont_know":
-            rating_value = get_rating_from_result(
-                hints_used,
-                knows_answer=False,
-            )
-
-            service = FSRSService()
-            outcome = service.review_card(card, rating_value)
-
-            if should_require_sentences(
-                had_wrong_attempt=bool(wrong_attempts_count > 0),
-                had_hint=bool(hints_used > 0),
-                had_dont_know=True,
-                rating_value=rating_value,
-                feature_enabled=True,
-            ):
-                required_count = sentence_count_for_rating(rating_value)
-
-                add_review_to_session(
-                    request,
-                    outcome.card,
-                    rating_value,
-                    user_answer=user_answer,
-                    hints_used=hints_used,
-                    direction=direction,
-                    prompt_text=prompt_text,
-                    expected_answer=expected_answer,
-                )
-
-                set_pending_sentence_task(
-                    request,
-                    card_id=outcome.card.id,
-                    source_mode="fsrs",
-                    rating_value=rating_value,
-                    required_count=required_count,
-                    return_url_name="review_card",
-                    return_url_kwargs={},
-                )
-
-                return redirect("sentence_practice")
-
-            add_review_to_session(
-                request,
-                outcome.card,
-                rating_value,
-                user_answer=user_answer,
-                hints_used=hints_used,
-                direction=direction,
-                prompt_text=prompt_text,
-                expected_answer=expected_answer,
-            )
-
-            answer_revealed = True
-            feedback = f"Correct answer: {expected_answer}"
-            feedback_type = "info"
-
-            next_card = get_next_due_card_for_user(request.user)
-
-            if next_card is None:
-                return redirect("review_done")
-
-            return redirect("review_card")
 
     else:
         hint_text = build_hint_mask(
@@ -605,6 +702,7 @@ def review_card_view(request):
         "study/review_card.html",
         {
             "card": card,
+            "is_retry": is_retry,
             "prompt_text": prompt_text,
             "expected_answer": expected_answer,
             "direction": direction,
