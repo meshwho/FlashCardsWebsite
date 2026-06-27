@@ -602,11 +602,6 @@ def review_card_view(request):
                         expected_answer=expected_answer,
                     )
 
-                    next_card = get_next_due_card_for_user(request.user)
-
-                    if next_card is None:
-                        return redirect("review_done")
-
                     return redirect("review_card")
 
                 wrong_attempts_count += 1
@@ -724,8 +719,13 @@ def review_card_view(request):
 
 @login_required
 def review_done_view(request):
-    summary = get_review_session_summary(request)
+    # Нельзя завершать сессию, пока остаются
+    # карточки для контрольного повтора.
+    if get_current_review_retry(request) is not None:
+        return redirect("review_card")
 
+    summary = get_review_session_summary(request)
+    
     log_action(
         user=request.user,
         action=AuditLog.ACTION_REVIEW,
