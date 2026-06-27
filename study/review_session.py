@@ -14,10 +14,78 @@ RATING_LABELS = {
 
 def start_review_session(request):
     request.session[SESSION_KEY] = {
-        "reviews": []
+        "reviews": [],
+        "retry_queue": [],
     }
     request.session.modified = True
 
+def enqueue_review_retry(request, card, direction="forward"):
+    session = request.session.get(
+        SESSION_KEY,
+        {
+            "reviews": [],
+            "retry_queue": [],
+        },
+    )
+
+    retry_queue = session.setdefault("retry_queue", [])
+    card_id = str(card.id)
+
+    # Не добавляем одну карточку несколько раз.
+    already_queued = any(
+        item.get("card_id") == card_id
+        for item in retry_queue
+    )
+
+    if not already_queued:
+        retry_queue.append(
+            {
+                "card_id": card_id,
+                "direction": direction,
+            }
+        )
+
+    request.session[SESSION_KEY] = session
+    request.session.modified = True
+
+
+def get_current_review_retry(request):
+    session = request.session.get(SESSION_KEY)
+
+    if not session:
+        return None
+
+    retry_queue = session.get("retry_queue", [])
+
+    if not retry_queue:
+        return None
+
+    return retry_queue[0]
+
+
+def complete_current_review_retry(request):
+    session = request.session.get(SESSION_KEY)
+
+    if not session:
+        return
+
+    retry_queue = session.get("retry_queue", [])
+
+    if retry_queue:
+        retry_queue.pop(0)
+
+    session["retry_queue"] = retry_queue
+    request.session[SESSION_KEY] = session
+    request.session.modified = True
+
+
+def get_review_retry_count(request):
+    session = request.session.get(SESSION_KEY)
+
+    if not session:
+        return 0
+
+    return len(session.get("retry_queue", []))
 
 def add_review_to_session(
     request,

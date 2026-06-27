@@ -10,7 +10,7 @@ from .models import Card, Deck
 from .forms import ReviewScheduleForm
 from .practice_session import get_practice_summary
 from .sentence_logic import sentence_count_for_rating, should_require_sentences
-
+from .review_logic import get_rating_from_result
 
 class SentenceLogicTests(TestCase):
     def test_sentence_count_for_rating(self):
@@ -410,3 +410,19 @@ class DeckDeleteViewTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
         self.assertTrue(Deck.objects.filter(id=other_deck.id).exists())
+    def test_three_hints_are_rated_again(self):
+    self.assertEqual(
+        get_rating_from_result(
+            hints_used=3,
+            knows_answer=True,
+        ),
+        1,
+    )
+
+    self.assertEqual(
+        get_rating_from_result(
+            hints_used=2,
+            knows_answer=True,
+        ),
+        2,
+    )
