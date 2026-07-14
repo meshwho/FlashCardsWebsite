@@ -108,8 +108,12 @@ from .translation_test import (
     choose_random_cards_for_test,
     is_correct_translation_test_answer,
 )
-from .ai_prompts import build_sentence_check_prompt
-from .ai_services import AIServiceError, check_sentences_with_gemini
+from .ai_prompts import build_sentence_check_prompt, build_word_usage_prompt
+from .ai_services import (
+    AIServiceError,
+    check_sentences_with_gemini,
+    explain_word_usage_with_gemini,
+)
 
 
 def _get_posted_non_negative_int(request, key, default=0):
@@ -2243,6 +2247,66 @@ def ai_check_sentences_view(request):
 
     try:
         result = check_sentences_with_gemini(prompt)
+    except AIServiceError as exc:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": str(exc),
+            },
+            status=502,
+        )
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "result": result.model_dump(),
+        }
+    )
+
+
+@login_required
+@require_POST
+def ai_word_usage_view(request):
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "Invalid JSON request.",
+            },
+            status=400,
+        )
+
+    if not isinstance(payload, dict):
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "JSON request must be an object.",
+            },
+            status=400,
+        )
+
+    card_id = payload.get("card_id")
+
+    if not card_id:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "card_id is required.",
+            },
+            status=400,
+        )
+
+    card = get_user_card_or_404(request.user, card_id)
+    prompt = build_word_usage_prompt(
+        word=card.question,
+        translation=card.answer,
+        context=card.context,
+    )
+
+    try:
+        result = explain_word_usage_with_gemini(prompt)
     except AIServiceError as exc:
         return JsonResponse(
             {
