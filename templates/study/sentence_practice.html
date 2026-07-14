@@ -60,7 +60,25 @@
             >
                 Check with AI
             </button>
+
+            <button
+                type="button"
+                id="ai-word-usage-btn"
+                class="btn btn-secondary"
+                data-card-id="{{ card.id }}"
+                data-usage-url="{% url 'ai_word_usage' %}"
+            >
+                How to use
+            </button>
         </div>
+
+        <div
+            id="ai-sentence-check-result"
+            class="card"
+            style="margin-top:20px; display:none;"
+            aria-live="polite"
+        ></div>
+
         <div
             id="ai-sentence-check-result"
             class="card"
@@ -72,10 +90,13 @@
 <script>
 (function () {
     const button = document.getElementById("ai-check-sentences-btn");
+    const usageButton = document.getElementById(
+        "ai-word-usage-btn"
+    );
     const resultBox = document.getElementById("ai-sentence-check-result");
 
-    if (!button || !resultBox) {
-        return;
+    if (!button || !usageButton || !resultBox) {
+    return;
     }
 
     function getCsrfToken() {
@@ -188,6 +209,106 @@
     `;
 }
 
+    function renderUsageSection(title, items) {
+        if (!items || !items.length) {
+            return "";
+        }
+
+        return `
+            <div class="ai-check-section">
+                <h4 class="ai-check-section-title">
+                    ${escapeHtml(title)}
+                </h4>
+
+                ${renderList(items, "ai-check-list")}
+            </div>
+        `;
+    }
+
+
+    function renderUsageResult(result) {
+        const examplesHtml = (
+            result.examples || []
+        ).map(function (example) {
+            return `
+                <li>
+                    <strong>
+                        ${escapeHtml(example.german)}
+                    </strong>
+
+                    <br>
+
+                    <span class="subtitle">
+                        ${escapeHtml(example.translation)}
+                    </span>
+                </li>
+            `;
+        }).join("");
+
+        resultBox.style.display = "";
+        resultBox.className = "card ai-check-panel";
+
+        resultBox.innerHTML = `
+            <div class="face-label">
+                How to use
+            </div>
+
+            <h2>
+                ${escapeHtml(
+                    result.canonical_form || ""
+                )}
+            </h2>
+
+            <p class="subtitle">
+                ${escapeHtml(
+                    result.part_of_speech || ""
+                )}
+            </p>
+
+            <div class="ai-check-summary">
+                <p class="ai-check-summary-text">
+                    ${escapeHtml(
+                        result.meaning || ""
+                    )}
+                </p>
+            </div>
+
+            <div class="ai-check-sections">
+                ${renderUsageSection(
+                    "Grammar and position",
+                    result.grammar_and_position
+                )}
+
+                ${renderUsageSection(
+                    "Common combinations",
+                    result.common_collocations
+                )}
+
+                ${renderUsageSection(
+                    "Fixed expressions",
+                    result.fixed_expressions
+                )}
+
+                ${renderUsageSection(
+                    "Important notes",
+                    result.important_notes
+                )}
+
+                ${examplesHtml ? `
+                    <div class="ai-check-section">
+                        <h4 class="ai-check-section-title">
+                            Examples
+                        </h4>
+
+                        <ol class="ai-check-list">
+                            ${examplesHtml}
+                        </ol>
+                    </div>
+                ` : ""}
+            </div>
+        `;
+    }
+
     function renderError(message) {
         resultBox.style.display = "";
         resultBox.innerHTML = `
@@ -206,6 +327,7 @@
         }
 
         button.disabled = true;
+        usageButton.disabled = true;
         button.textContent = "Checking...";
 
         resultBox.style.display = "";
@@ -247,9 +369,75 @@
         })
         .finally(function () {
             button.disabled = false;
+            usageButton.disabled = false;
             button.textContent = "Check with AI";
         });
     });
+    usageButton.addEventListener(
+        "click",
+        function () {
+            button.disabled = true;
+            usageButton.disabled = true;
+            usageButton.textContent = "Loading...";
+
+            resultBox.style.display = "";
+            resultBox.className = "card ai-check-panel";
+
+            resultBox.innerHTML = `
+                <div class="face-label">
+                    How to use
+                </div>
+
+                <p style="margin-bottom:0;">
+                    Preparing a usage guide...
+                </p>
+            `;
+
+            fetch(
+                usageButton.dataset.usageUrl,
+                {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        card_id:
+                            usageButton.dataset.cardId
+                    })
+                }
+            )
+            .then(function (response) {
+                return response.json().then(
+                    function (data) {
+                        if (!response.ok || !data.ok) {
+                            throw new Error(
+                                data.error ||
+                                "Could not load the usage guide."
+                            );
+                        }
+
+                        return data.result;
+                    }
+                );
+            })
+            .then(function (result) {
+                renderUsageResult(result);
+            })
+            .catch(function (error) {
+                renderError(
+                    error.message ||
+                    "Could not load the usage guide."
+                );
+            })
+            .finally(function () {
+                button.disabled = false;
+                usageButton.disabled = false;
+                usageButton.textContent = "How to use";
+            });
+        }
+    );
 })();
 </script>
 {% endblock %}

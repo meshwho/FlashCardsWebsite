@@ -38,3 +38,18 @@ class SentenceCheckResult(BaseModel):
     problems: List[SentenceProblem] = Field(
         description="List of problems. Empty if all_ok is true."
     )
+
+class WordUsageExample(BaseModel):
+    german: str
+    translation: str
+
+
+class WordUsageResult(BaseModel):
+    canonical_form: str
+    part_of_speech: str
+    meaning: str
+    grammar_and_position: List[str]
+    common_collocations: List[str]
+    fixed_expressions: List[str]
+    examples: List[WordUsageExample]
+    important_notes: List[str]
