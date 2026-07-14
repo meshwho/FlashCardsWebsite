@@ -33,6 +33,7 @@ from .views import (
     translation_test_practice_view,
     translation_test_done_view,
     ai_check_sentences_view,
+    ai_word_usage_view,
 )
 
 urlpatterns = [
@@ -104,5 +105,10 @@ urlpatterns = [
         "ai/check-sentences/",
         ai_check_sentences_view,
         name="ai_check_sentences",
+    ),
+    path(
+        "ai/word-usage/",
+        ai_word_usage_view,
+        name="ai_word_usage",
     ),
 ]
