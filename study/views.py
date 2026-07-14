@@ -401,7 +401,16 @@ def study_today_view(request):
 
 @login_required
 def start_review_session_view(request):
+    has_due_cards = get_due_cards_for_user(
+        request.user
+    ).exists()
+
+    if not has_due_cards:
+        clear_review_session(request)
+        return redirect("study_today")
+
     start_review_session(request)
+
     return redirect("review_card")
 
 
@@ -732,7 +741,11 @@ def review_done_view(request):
         return redirect("review_card")
 
     summary = get_review_session_summary(request)
-    
+
+    if summary["total_reviewed"] == 0:
+        clear_review_session(request)
+        return redirect("study_today")
+
     log_action(
         user=request.user,
         action=AuditLog.ACTION_REVIEW,
