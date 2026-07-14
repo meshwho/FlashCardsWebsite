@@ -15,6 +15,14 @@
     <span class="badge badge-accent">{{ direction_label }}</span>
 </div>
 
+{% if is_retry %}
+    <div class="form-info-banner" style="margin-top: 16px;">
+        <p>
+            Final retry. This answer will not change the card schedule.
+        </p>
+    </div>
+{% endif %}
+
 <div class="card">
     <div class="face-label">Prompt</div>
 
@@ -51,6 +59,18 @@
 <div class="card" style="margin-top: 20px;">
     <form method="post" id="typing-review-form">
         {% csrf_token %}
+        
+        <input
+            type="hidden"
+            name="card_id"
+            value="{{ card.id }}"
+        >
+
+        <input
+            type="hidden"
+            name="is_retry"
+            value="{% if is_retry %}1{% else %}0{% endif %}"
+        >    
 
         <input type="hidden" name="direction" value="{{ direction }}">
         <input type="hidden" name="hints_used" value="{{ hints_used }}">
@@ -104,13 +124,16 @@
     </form>
 </div>
 
-<div class="card" style="margin-top: 20px;">
-    <div class="face-label">Scoring</div>
-    <ul class="review-rules-list">
-        <li>0 hints → Easy</li>
-        <li>1 hint → Good</li>
-        <li>2–3 hints → Hard</li>
-        <li>Don't know → Again</li>
-    </ul>
-</div>
+{% if not is_retry %}
+    <div class="card" style="margin-top: 20px;">
+        <div class="face-label">Scoring</div>
+        <ul class="review-rules-list">
+            <li>0 hints → Easy</li>
+            <li>1 hint → Good</li>
+            <li>2 hints → Hard</li>
+            <li>3 hints → Again</li>
+            <li>Don't know → Again</li>
+        </ul>
+    </div>
+{% endif %}
 {% endblock %}

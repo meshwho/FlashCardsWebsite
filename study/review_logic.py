@@ -142,6 +142,9 @@ def get_rating_from_result(hints_used: int, knows_answer: bool) -> int:
     if not knows_answer:
         return 1  # Again
 
+    if hints_used >= MAX_HINTS:
+        return 1  # Again
+
     if hints_used <= 0:
         return 4  # Easy
 
