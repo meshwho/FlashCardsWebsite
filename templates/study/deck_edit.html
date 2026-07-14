@@ -39,6 +39,65 @@
             </div>
         </div>
 
+        <div class="card fade-in-2" style="margin-bottom:24px;">
+            <h3 style="margin-bottom:8px;">
+                Import cards from photos
+            </h3>
+
+            <p class="subtitle" style="margin-bottom:18px;">
+                Copy the prompt, upload your notebook photos to ChatGPT,
+                then paste the returned JSON below.
+            </p>
+
+            <div class="stack-actions" style="margin-bottom:18px;">
+                <button
+                    type="button"
+                    id="copy-photo-import-prompt-btn"
+                    class="btn btn-secondary"
+                >
+                    Copy photo import prompt
+                </button>
+            </div>
+
+            <div class="form-group">
+                <label for="photo-import-json">
+                    JSON from ChatGPT
+                </label>
+
+                <textarea
+                    id="photo-import-json"
+                    rows="12"
+                    class="card-input"
+                    placeholder='Paste JSON here: [{"question":"das Haus","answer":"дом","context":"","has_article":true}]'
+                ></textarea>
+            </div>
+
+            <div class="stack-actions">
+                <button
+                    type="button"
+                    id="import-photo-json-btn"
+                    class="btn btn-primary"
+                >
+                    Import cards
+                </button>
+
+                <button
+                    type="button"
+                    id="clear-photo-json-btn"
+                    class="btn btn-ghost"
+                >
+                    Clear
+                </button>
+            </div>
+
+            <div
+                id="photo-import-status"
+                class="subtitle"
+                style="margin-top:14px;"
+                aria-live="polite"
+            ></div>
+        </div>
+
         <div class="fade-in-3">
             <div class="stack-actions" style="align-items:center;justify-content:space-between;margin-bottom:16px;">
                 <h2>Cards</h2>
@@ -230,6 +289,26 @@
     const totalFormsInput = document.getElementById("id_cards-TOTAL_FORMS");
     const template = document.getElementById("empty-card-template");
 
+    const copyPhotoPromptBtn = document.getElementById(
+        "copy-photo-import-prompt-btn"
+    );
+
+    const importPhotoJsonBtn = document.getElementById(
+        "import-photo-json-btn"
+    );
+
+    const clearPhotoJsonBtn = document.getElementById(
+        "clear-photo-json-btn"
+    );
+
+    const photoImportJsonField = document.getElementById(
+        "photo-import-json"
+    );
+
+    const photoImportStatus = document.getElementById(
+        "photo-import-status"
+    );
+
     if (!addCardBtn || !cardsContainer || !totalFormsInput || !template) {
         return;
     }
@@ -246,8 +325,15 @@
         });
     }
 
-    function addCardForm() {
-        const formIndex = parseInt(totalFormsInput.value, 10);
+    function addCardForm(options) {
+        const settings = options || {};
+        const shouldScroll = settings.scroll !== false;
+
+        const formIndex = parseInt(
+            totalFormsInput.value,
+            10
+        );
+
         const fragment = template.content.cloneNode(true);
 
         fragment
@@ -261,15 +347,21 @@
 
         const newCard = cardsContainer.lastElementChild;
 
-        if (newCard) {
+        if (newCard && shouldScroll) {
             newCard.scrollIntoView({
                 behavior: "smooth",
                 block: "center"
             });
         }
+
+        return newCard;
     }
 
-    addCardBtn.addEventListener("click", addCardForm);
+    addCardBtn.addEventListener("click", function () {
+        addCardForm({
+            scroll: true
+        });
+    });
 
     cardsContainer.addEventListener("click", function (event) {
         const deleteBtn = event.target.closest(".delete-card-btn");
@@ -366,6 +458,154 @@
         return cards;
     }
 
+    function buildPhotoImportPrompt() {
+        const lines = [];
+
+        lines.push(
+            "Ты — эксперт по немецкому языку и точному распознаванию текста с фотографий."
+        );
+        lines.push("");
+        lines.push(
+            "Я пришлю одну или несколько фотографий тетради со словами для изучения немецкого языка."
+        );
+        lines.push("");
+        lines.push("Твоя задача:");
+        lines.push(
+            "1. Распознать все немецкие слова, выражения и их переводы."
+        );
+        lines.push(
+            "2. Сохранить исходный порядок записей."
+        );
+        lines.push(
+            "3. Преобразовать записи в JSON для импорта в приложение."
+        );
+        lines.push(
+            "4. Исправить только реальные ошибки."
+        );
+        lines.push("");
+
+        lines.push("Что можно исправлять:");
+        lines.push(
+            "- явные орфографические ошибки в немецком слове;"
+        );
+        lines.push(
+            "- явно неправильный или отсутствующий артикль существительного;"
+        );
+        lines.push(
+            "- неправильную заглавную букву у немецкого существительного;"
+        );
+        lines.push(
+            "- явную орфографическую ошибку в переводе;"
+        );
+        lines.push(
+            "- перевод, только если он действительно неправильный;"
+        );
+        lines.push("");
+
+        lines.push("Что нельзя делать:");
+        lines.push(
+            "- не заменяй правильные слова более красивыми вариантами;"
+        );
+        lines.push(
+            "- не улучшай перевод, если он уже правильный;"
+        );
+        lines.push(
+            "- не добавляй синонимы, примеры, пояснения или дополнительные значения;"
+        );
+        lines.push(
+            "- не добавляй формы множественного числа, если их нет в тетради;"
+        );
+        lines.push(
+            "- не объединяй и не удаляй записи;"
+        );
+        lines.push(
+            "- не меняй порядок записей;"
+        );
+        lines.push(
+            "- не придумывай неразборчивый текст."
+        );
+        lines.push("");
+
+        lines.push("Правила формирования карточек:");
+        lines.push(
+            '- question — немецкое слово или выражение.'
+        );
+        lines.push(
+            '- answer — перевод именно из тетради, если он правильный.'
+        );
+        lines.push(
+            '- context — контекст или управление, только если оно записано в тетради.'
+        );
+        lines.push(
+            '- Если context не записан, используй пустую строку "".'
+        );
+        lines.push(
+            "- Для существительных добавляй или исправляй der, die или das."
+        );
+        lines.push(
+            "- Если question является существительным с артиклем, has_article должен быть true."
+        );
+        lines.push(
+            "- Для глаголов, прилагательных, наречий и выражений has_article должен быть false."
+        );
+        lines.push(
+            "- Глагол записывай в инфинитиве, если в тетради очевидно записана словарная форма."
+        );
+        lines.push("");
+
+        lines.push("Если часть записи невозможно прочитать:");
+        lines.push(
+            '- не угадывай; напиши в соответствующем поле "[НЕРАЗБОРЧИВО]".'
+        );
+        lines.push("");
+
+        lines.push("Формат ответа:");
+        lines.push(
+            "- Верни только валидный JSON-массив."
+        );
+        lines.push(
+            "- Не используй Markdown."
+        );
+        lines.push(
+            "- Не добавляй ```json."
+        );
+        lines.push(
+            "- Не пиши объяснения до или после JSON."
+        );
+        lines.push(
+            "- Все объекты должны содержать ровно четыре поля:"
+        );
+        lines.push(
+            '  "question", "answer", "context", "has_article".'
+        );
+        lines.push(
+            "- has_article должен быть JSON boolean: true или false, без кавычек."
+        );
+        lines.push("");
+
+        lines.push("Пример:");
+        lines.push("[");
+        lines.push("  {");
+        lines.push('    "question": "das Haus",');
+        lines.push('    "answer": "дом",');
+        lines.push('    "context": "",');
+        lines.push('    "has_article": true');
+        lines.push("  },");
+        lines.push("  {");
+        lines.push('    "question": "sich erinnern",');
+        lines.push('    "answer": "вспоминать",');
+        lines.push('    "context": "an + Akkusativ",');
+        lines.push('    "has_article": false');
+        lines.push("  }");
+        lines.push("]");
+        lines.push("");
+        lines.push(
+            "Сейчас дождись фотографий и обработай их по этим правилам."
+        );
+
+        return lines.join("\n");
+    }
+
     function buildAiCheckPrompt(cards) {
     const deckTitleField = document.querySelector(
         `[name$="title"]`
@@ -458,6 +698,287 @@
         }
     }
 
+    function parseImportedCards(rawText) {
+        const text = (rawText || "").trim();
+
+        if (!text) {
+            throw new Error(
+                "Paste JSON from ChatGPT first."
+            );
+        }
+
+        let parsed;
+
+        try {
+            parsed = JSON.parse(text);
+        } catch (error) {
+            throw new Error(
+                "Invalid JSON. Make sure you copied the complete response."
+            );
+        }
+
+        if (!Array.isArray(parsed)) {
+            throw new Error(
+                "The JSON must be an array of cards."
+            );
+        }
+
+        if (!parsed.length) {
+            throw new Error(
+                "The JSON array does not contain any cards."
+            );
+        }
+
+        if (parsed.length > 500) {
+            throw new Error(
+                "You can import no more than 500 cards at once."
+            );
+        }
+
+        const allowedFields = new Set([
+            "question",
+            "answer",
+            "context",
+            "has_article"
+        ]);
+
+        return parsed.map(function (item, index) {
+            const cardNumber = index + 1;
+
+            if (
+                !item ||
+                typeof item !== "object" ||
+                Array.isArray(item)
+            ) {
+                throw new Error(
+                    `Card ${cardNumber} must be a JSON object.`
+                );
+            }
+
+            const unknownFields = Object.keys(item).filter(
+                function (key) {
+                    return !allowedFields.has(key);
+                }
+            );
+
+            if (unknownFields.length) {
+                throw new Error(
+                    `Card ${cardNumber} contains unknown fields: ` +
+                    unknownFields.join(", ")
+                );
+            }
+
+            if (typeof item.question !== "string") {
+                throw new Error(
+                    `Card ${cardNumber}: question must be a string.`
+                );
+            }
+
+            if (typeof item.answer !== "string") {
+                throw new Error(
+                    `Card ${cardNumber}: answer must be a string.`
+                );
+            }
+
+            const question = item.question.trim();
+            const answer = item.answer.trim();
+
+            const context =
+                typeof item.context === "string"
+                    ? item.context.trim()
+                    : "";
+
+            if (!question) {
+                throw new Error(
+                    `Card ${cardNumber}: question is empty.`
+                );
+            }
+
+            if (!answer) {
+                throw new Error(
+                    `Card ${cardNumber}: answer is empty.`
+                );
+            }
+
+            if (context.length > 255) {
+                throw new Error(
+                    `Card ${cardNumber}: context is longer than 255 characters.`
+                );
+            }
+
+            if (typeof item.has_article !== "boolean") {
+                throw new Error(
+                    `Card ${cardNumber}: has_article must be true or false.`
+                );
+            }
+
+            return {
+                question: question,
+                answer: answer,
+                context: context,
+                hasArticle: item.has_article
+            };
+        });
+    }
+
+    function isEmptyNewCardForm(cardForm) {
+        if (!cardForm) {
+            return false;
+        }
+
+        if (cardForm.dataset.existing === "true") {
+            return false;
+        }
+
+        const question = getFieldValue(
+            cardForm,
+            "question"
+        );
+
+        const answer = getFieldValue(
+            cardForm,
+            "answer"
+        );
+
+        const context = getFieldValue(
+            cardForm,
+            "context"
+        );
+
+        const articleField = cardForm.querySelector(
+            'input[type="checkbox"][name$="-has_article"]'
+        );
+
+        const hasArticle = Boolean(
+            articleField && articleField.checked
+        );
+
+        return (
+            !question &&
+            !answer &&
+            !context &&
+            !hasArticle
+        );
+    }
+
+
+    function findEmptyNewCardForm() {
+        const cardForms = Array.from(
+            cardsContainer.querySelectorAll(
+                ".card-form-item"
+            )
+        );
+
+        return cardForms.find(function (cardForm) {
+            return isEmptyNewCardForm(cardForm);
+        }) || null;
+    }
+
+
+    function setCardFieldValue(
+        cardForm,
+        fieldName,
+        value
+    ) {
+        const field = cardForm.querySelector(
+            `[name$="-${fieldName}"]`
+        );
+
+        if (field) {
+            field.value = value;
+        }
+    }
+
+
+    function fillCardForm(cardForm, card) {
+        setCardFieldValue(
+            cardForm,
+            "question",
+            card.question
+        );
+
+        setCardFieldValue(
+            cardForm,
+            "answer",
+            card.answer
+        );
+
+        setCardFieldValue(
+            cardForm,
+            "context",
+            card.context
+        );
+
+        const articleField = cardForm.querySelector(
+            'input[type="checkbox"][name$="-has_article"]'
+        );
+
+        if (articleField) {
+            articleField.checked = card.hasArticle;
+        }
+    }
+
+
+    function renumberCardForms() {
+        const cardForms = Array.from(
+            cardsContainer.querySelectorAll(
+                ".card-form-item"
+            )
+        );
+
+        let visibleNumber = 1;
+
+        cardForms.forEach(function (cardForm) {
+            if (isCardMarkedForDeletion(cardForm)) {
+                return;
+            }
+
+            const numberElement = cardForm.querySelector(
+                ".card-num"
+            );
+
+            if (numberElement) {
+                numberElement.textContent =
+                    `Card ${visibleNumber}`;
+            }
+
+            visibleNumber += 1;
+        });
+    }
+
+
+    function importCardsIntoForm(cards) {
+        let lastImportedForm = null;
+
+        cards.forEach(function (card) {
+            let cardForm = findEmptyNewCardForm();
+
+            if (!cardForm) {
+                cardForm = addCardForm({
+                    scroll: false
+                });
+            }
+
+            if (!cardForm) {
+                throw new Error(
+                    "Could not create a new card form."
+                );
+            }
+
+            fillCardForm(cardForm, card);
+            lastImportedForm = cardForm;
+        });
+
+        renumberCardForms();
+
+        if (lastImportedForm) {
+            lastImportedForm.scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+        }
+    }
+
     if (copyAiPromptBtn) {
         copyAiPromptBtn.addEventListener("click", function () {
             const cards = getDeckCardsForAiCheck();
@@ -487,7 +1008,79 @@
                 });
         });
     }
+    if (copyPhotoPromptBtn) {
+        copyPhotoPromptBtn.addEventListener(
+            "click",
+            function () {
+                const prompt = buildPhotoImportPrompt();
 
+                copyTextToClipboard(prompt)
+                    .then(function () {
+                        if (photoImportStatus) {
+                            photoImportStatus.textContent =
+                                "Prompt copied. Upload it together with your photos to ChatGPT.";
+                        }
+                    })
+                    .catch(function () {
+                        if (photoImportStatus) {
+                            photoImportStatus.textContent =
+                                "Could not copy the prompt automatically.";
+                        }
+                    });
+            }
+        );
+    }
+
+
+    if (importPhotoJsonBtn) {
+        importPhotoJsonBtn.addEventListener(
+            "click",
+            function () {
+                try {
+                    const cards = parseImportedCards(
+                        photoImportJsonField
+                            ? photoImportJsonField.value
+                            : ""
+                    );
+
+                    importCardsIntoForm(cards);
+
+                    if (photoImportJsonField) {
+                        photoImportJsonField.value = "";
+                    }
+
+                    if (photoImportStatus) {
+                        photoImportStatus.textContent =
+                            `Imported ${cards.length} card(s). ` +
+                            "Review them and click Save deck.";
+                    }
+                } catch (error) {
+                    if (photoImportStatus) {
+                        photoImportStatus.textContent =
+                            error.message ||
+                            "Could not import cards.";
+                    }
+                }
+            }
+        );
+    }
+
+
+    if (clearPhotoJsonBtn) {
+        clearPhotoJsonBtn.addEventListener(
+            "click",
+            function () {
+                if (photoImportJsonField) {
+                    photoImportJsonField.value = "";
+                    photoImportJsonField.focus();
+                }
+
+                if (photoImportStatus) {
+                    photoImportStatus.textContent = "";
+                }
+            }
+        );
+    }
 })();
 </script>
 {% endblock %}
