@@ -1,7 +1,11 @@
 from django.db import transaction
+from django.utils import timezone
 
 from .models import Card
-from .selectors import get_user_review_slots, get_or_create_user_review_schedule
+from .selectors import (
+    get_user_review_slots,
+    get_or_create_user_review_schedule,
+)
 from .scheduling import snap_due_to_next_slot
 
 
@@ -10,7 +14,12 @@ def reschedule_all_user_cards(user):
     schedule = get_or_create_user_review_schedule(user)
     slot_times = get_user_review_slots(user)
     tz_name = schedule.timezone if schedule else "Europe/Kyiv"
-    cards = Card.objects.filter(deck__owner=user).select_related("deck")
+    now = timezone.now()
+
+    cards = Card.objects.filter(
+        deck__owner=user,
+        due__gt=now,
+    ).select_related("deck")
 
     updated_cards = []
     for card in cards:
