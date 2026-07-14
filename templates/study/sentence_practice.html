@@ -60,21 +60,33 @@
             >
                 Check with AI
             </button>
+
+            <button
+                type="button"
+                id="ai-word-usage-btn"
+                class="btn btn-secondary"
+                data-card-id="{{ card.id }}"
+                data-usage-url="{% url 'ai_word_usage' %}"
+            >
+                How to use
+            </button>
         </div>
         <div
             id="ai-sentence-check-result"
             class="card"
             style="margin-top:20px; display:none;"
+            aria-live="polite"
         ></div>
     </form>
 </div>
 
 <script>
 (function () {
-    const button = document.getElementById("ai-check-sentences-btn");
+    const checkButton = document.getElementById("ai-check-sentences-btn");
+    const usageButton = document.getElementById("ai-word-usage-btn");
     const resultBox = document.getElementById("ai-sentence-check-result");
 
-    if (!button || !resultBox) {
+    if (!checkButton || !usageButton || !resultBox) {
         return;
     }
 
@@ -110,86 +122,141 @@
     }
 
     function renderList(items, className) {
-    if (!items || !items.length) {
-        return "";
+        if (!items || !items.length) {
+            return "";
+        }
+
+        const listClass = className || "";
+
+        return "<ul class=\"" + listClass + "\">" + items.map(function (item) {
+            return "<li>" + escapeHtml(item) + "</li>";
+        }).join("") + "</ul>";
     }
 
-    const listClass = className || "";
+    function renderCheckResult(result) {
+        resultBox.style.display = "";
+        resultBox.className = "card ai-check-panel";
 
-    return "<ul class=\"" + listClass + "\">" + items.map(function (item) {
-        return "<li>" + escapeHtml(item) + "</li>";
-    }).join("") + "</ul>";
-}
-    function renderResult(result) {
-    resultBox.style.display = "";
-    resultBox.className = "card ai-check-panel";
+        if (result.all_ok) {
+            resultBox.innerHTML = `
+                <div class="face-label">AI check</div>
 
-    if (result.all_ok) {
+                <p class="ai-check-ok-text">
+                    ${escapeHtml(result.short_message || "Все ок. Хорошая работа!")}
+                </p>
+            `;
+            return;
+        }
+
+        const problemsHtml = (result.problems || []).map(function (problem) {
+            return `
+                <div class="ai-check-problem">
+                    <h3 class="ai-check-problem-title">
+                        Sentence ${problem.sentence_number}
+                    </h3>
+
+                    <p class="ai-check-original">
+                        ${escapeHtml(problem.original_sentence || "")}
+                    </p>
+
+                    <div class="ai-check-corrected">
+                        <span class="ai-check-corrected-label">
+                            Corrected version
+                        </span>
+                        <p class="ai-check-corrected-text">
+                            ${escapeHtml(problem.corrected_sentence || "")}
+                        </p>
+                    </div>
+
+                    <div class="ai-check-sections">
+                        <div class="ai-check-section">
+                            <h4 class="ai-check-section-title">What was wrong</h4>
+                            ${renderList(problem.what_was_wrong, "ai-check-list")}
+                        </div>
+
+                        <div class="ai-check-section">
+                            <h4 class="ai-check-section-title">Why</h4>
+                            ${renderList(problem.why_it_is_wrong, "ai-check-list")}
+                        </div>
+
+                        <div class="ai-check-section">
+                            <h4 class="ai-check-section-title">How to avoid this</h4>
+                            ${renderList(problem.how_to_avoid, "ai-check-list")}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join("");
+
         resultBox.innerHTML = `
             <div class="face-label">AI check</div>
 
-            <p class="ai-check-ok-text">
-                ${escapeHtml(result.short_message || "Все ок. Хорошая работа!")}
-            </p>
+            <div class="ai-check-summary">
+                <p class="ai-check-summary-text">
+                    ${escapeHtml(result.short_message || "Есть несколько моментов, которые стоит поправить.")}
+                </p>
+            </div>
+
+            ${problemsHtml}
         `;
-        return;
     }
 
-    const problemsHtml = (result.problems || []).map(function (problem) {
+    function renderUsageSection(title, items) {
+        if (!items || !items.length) {
+            return "";
+        }
+
         return `
-            <div class="ai-check-problem">
-                <h3 class="ai-check-problem-title">
-                    Sentence ${problem.sentence_number}
-                </h3>
+            <section class="ai-usage-section">
+                <h3 class="ai-check-section-title">${escapeHtml(title)}</h3>
+                ${renderList(items, "ai-check-list")}
+            </section>
+        `;
+    }
 
-                <p class="ai-check-original">
-                    ${escapeHtml(problem.original_sentence || "")}
-                </p>
+    function renderUsageResult(result) {
+        const examplesHtml = (result.examples || []).map(function (example) {
+            return `
+                <li class="ai-usage-example">
+                    <p class="ai-usage-example-german">${escapeHtml(example.german)}</p>
+                    <p class="ai-usage-example-translation">${escapeHtml(example.translation)}</p>
+                </li>
+            `;
+        }).join("");
 
-                <div class="ai-check-corrected">
-                    <span class="ai-check-corrected-label">
-                        Corrected version
-                    </span>
-                    <p class="ai-check-corrected-text">
-                        ${escapeHtml(problem.corrected_sentence || "")}
-                    </p>
-                </div>
+        resultBox.style.display = "";
+        resultBox.className = "card ai-check-panel ai-usage-panel";
+        resultBox.innerHTML = `
+            <div class="face-label">How to use</div>
 
-                <div class="ai-check-sections">
-                    <div class="ai-check-section">
-                        <h4 class="ai-check-section-title">What was wrong</h4>
-                        ${renderList(problem.what_was_wrong, "ai-check-list")}
-                    </div>
+            <div class="ai-usage-heading">
+                <h2 class="ai-usage-word">${escapeHtml(result.canonical_form || "")}</h2>
+                <span class="badge badge-accent">${escapeHtml(result.part_of_speech || "")}</span>
+            </div>
 
-                    <div class="ai-check-section">
-                        <h4 class="ai-check-section-title">Why</h4>
-                        ${renderList(problem.why_it_is_wrong, "ai-check-list")}
-                    </div>
+            <div class="ai-check-summary">
+                <p class="ai-check-summary-text">${escapeHtml(result.meaning || "")}</p>
+            </div>
 
-                    <div class="ai-check-section">
-                        <h4 class="ai-check-section-title">How to avoid this</h4>
-                        ${renderList(problem.how_to_avoid, "ai-check-list")}
-                    </div>
-                </div>
+            <div class="ai-usage-sections">
+                ${renderUsageSection("Grammar and position", result.grammar_and_position)}
+                ${renderUsageSection("Common combinations", result.common_collocations)}
+                ${renderUsageSection("Fixed expressions", result.fixed_expressions)}
+                ${renderUsageSection("Important notes", result.important_notes)}
+
+                ${examplesHtml ? `
+                    <section class="ai-usage-section ai-usage-examples-section">
+                        <h3 class="ai-check-section-title">Examples</h3>
+                        <ol class="ai-usage-examples">${examplesHtml}</ol>
+                    </section>
+                ` : ""}
             </div>
         `;
-    }).join("");
-
-    resultBox.innerHTML = `
-        <div class="face-label">AI check</div>
-
-        <div class="ai-check-summary">
-            <p class="ai-check-summary-text">
-                ${escapeHtml(result.short_message || "Есть несколько моментов, которые стоит поправить.")}
-            </p>
-        </div>
-
-        ${problemsHtml}
-    `;
-}
+    }
 
     function renderError(message) {
         resultBox.style.display = "";
+        resultBox.className = "card ai-check-panel";
         resultBox.innerHTML = `
             <div class="form-error-banner" style="margin-bottom:0;">
                 <p>${escapeHtml(message || "AI check failed.")}</p>
@@ -197,7 +264,32 @@
         `;
     }
 
-    button.addEventListener("click", function () {
+    function setButtonsDisabled(disabled) {
+        checkButton.disabled = disabled;
+        usageButton.disabled = disabled;
+    }
+
+    function postJson(url, payload) {
+        return fetch(url, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCsrfToken()
+            },
+            body: JSON.stringify(payload)
+        }).then(function (response) {
+            return response.json().then(function (data) {
+                if (!response.ok || !data.ok) {
+                    throw new Error(data.error || "AI request failed.");
+                }
+
+                return data.result;
+            });
+        });
+    }
+
+    checkButton.addEventListener("click", function () {
         const sentences = getSentences();
 
         if (!sentences.length) {
@@ -205,49 +297,55 @@
             return;
         }
 
-        button.disabled = true;
-        button.textContent = "Checking...";
+        setButtonsDisabled(true);
+        checkButton.textContent = "Checking...";
 
         resultBox.style.display = "";
+        resultBox.className = "card ai-check-panel";
         resultBox.innerHTML = `
             <div class="face-label">AI check</div>
             <p style="margin-bottom:0;">Checking your sentences...</p>
         `;
 
-        fetch(button.dataset.checkUrl, {
-            method: "POST",
-            credentials: "same-origin",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": getCsrfToken()
-            },
-            body: JSON.stringify({
-                card_id: button.dataset.cardId,
-                sentences: sentences
-            })
+        postJson(checkButton.dataset.checkUrl, {
+            card_id: checkButton.dataset.cardId,
+            sentences: sentences
         })
-        .then(function (response) {
-            return response.json().then(function (data) {
-                if (!response.ok) {
-                    throw new Error(data.error || "AI check failed.");
-                }
-
-                return data;
-            });
-        })
-        .then(function (data) {
-            if (!data.ok) {
-                throw new Error(data.error || "AI check failed.");
-            }
-
-            renderResult(data.result);
+        .then(function (result) {
+            renderCheckResult(result);
         })
         .catch(function (error) {
             renderError(error.message || "AI check failed.");
         })
         .finally(function () {
-            button.disabled = false;
-            button.textContent = "Check with AI";
+            setButtonsDisabled(false);
+            checkButton.textContent = "Check with AI";
+        });
+    });
+
+    usageButton.addEventListener("click", function () {
+        setButtonsDisabled(true);
+        usageButton.textContent = "Loading...";
+
+        resultBox.style.display = "";
+        resultBox.className = "card ai-check-panel";
+        resultBox.innerHTML = `
+            <div class="face-label">How to use</div>
+            <p style="margin-bottom:0;">Preparing a usage guide...</p>
+        `;
+
+        postJson(usageButton.dataset.usageUrl, {
+            card_id: usageButton.dataset.cardId
+        })
+        .then(function (result) {
+            renderUsageResult(result);
+        })
+        .catch(function (error) {
+            renderError(error.message || "Could not load the usage guide.");
+        })
+        .finally(function () {
+            setButtonsDisabled(false);
+            usageButton.textContent = "How to use";
         });
     });
 })();
