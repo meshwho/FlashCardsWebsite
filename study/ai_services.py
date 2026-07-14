@@ -1,14 +1,19 @@
 import json
+from typing import Type, TypeVar
 
 from django.conf import settings
 from google import genai
 from google.genai import types
+from pydantic import BaseModel
 
-from .ai_schemas import SentenceCheckResult
+from .ai_schemas import SentenceCheckResult, WordUsageResult
 
 
 class AIServiceError(Exception):
     pass
+
+
+StructuredResult = TypeVar("StructuredResult", bound=BaseModel)
 
 
 def _get_gemini_client():
@@ -20,7 +25,10 @@ def _get_gemini_client():
     return genai.Client(api_key=api_key)
 
 
-def check_sentences_with_gemini(prompt: str) -> SentenceCheckResult:
+def _generate_structured_content(
+    prompt: str,
+    response_schema: Type[StructuredResult],
+) -> StructuredResult:
     if not getattr(settings, "AI_FEATURES_ENABLED", False):
         raise AIServiceError("AI features are disabled.")
 
@@ -32,7 +40,7 @@ def check_sentences_with_gemini(prompt: str) -> SentenceCheckResult:
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
-                response_schema=SentenceCheckResult,
+                response_schema=response_schema,
             ),
         )
     except Exception as exc:
@@ -44,14 +52,22 @@ def check_sentences_with_gemini(prompt: str) -> SentenceCheckResult:
         raise AIServiceError("Gemini returned an empty response.")
 
     try:
-        return SentenceCheckResult.model_validate_json(response_text)
+        return response_schema.model_validate_json(response_text)
     except Exception:
         # Fallback на случай, если SDK уже вернул dict-like JSON,
         # но Pydantic не смог разобрать строку напрямую.
         try:
             data = json.loads(response_text)
-            return SentenceCheckResult.model_validate(data)
+            return response_schema.model_validate(data)
         except Exception as exc:
             raise AIServiceError(
                 f"Could not parse Gemini response: {exc}. Raw response: {response_text[:500]}"
             ) from exc
+
+
+def check_sentences_with_gemini(prompt: str) -> SentenceCheckResult:
+    return _generate_structured_content(prompt, SentenceCheckResult)
+
+
+def explain_word_usage_with_gemini(prompt: str) -> WordUsageResult:
+    return _generate_structured_content(prompt, WordUsageResult)
