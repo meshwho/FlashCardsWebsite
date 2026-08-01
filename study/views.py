@@ -478,7 +478,7 @@ def review_card_view(request):
     elif is_retry and retry_item:
         direction = retry_item.get("direction", "forward")
     else:
-        direction = random.choice(["forward", "reverse"])
+        direction = "reverse" if random.random() < 0.7 else "forward"
 
     if direction not in {"forward", "reverse"}:
         direction = "forward"
